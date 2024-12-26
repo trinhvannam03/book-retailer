@@ -115,17 +115,17 @@ public class CartService {
         throw new ResourceNotFoundException("No such item in cart!");
     }
 
-    public List<CartRecordDTO> getCheckedItems(UserDetails userDetails, List<CartController.RequestData> requestData) {
-        List<CartRecord> cartRecords = cartRecordRepository.findCartRecordsWithStock(userDetails.getUser().getUserId(), requestData.stream().map(CartController.RequestData::getCart_record_id).toList());
+    public List<CartRecordDTO> getCheckedItems(UserDetails userDetails, List<CartRecordDTO> cartRecordDTOS) {
+        List<CartRecord> cartRecords = cartRecordRepository.findCartRecordsWithStock(userDetails.getUser().getUserId(), cartRecordDTOS.stream().map(CartRecordDTO::getId).toList());
         //some items in the data have been deleted. throw an error
-        if (cartRecords.size() != requestData.size()) {
+        if (cartRecords.size() != cartRecordDTOS.size()) {
             throw new ResourceNotFoundException("Cart Changed!");
         }
         //checking for stock. Use a map to leverage instant get() method.
         List<CartRecordDTO> cartRecordDTOs = new ArrayList<>();
         Map<Long, Integer> requestDataMap = new HashMap<>();
-        for (CartController.RequestData data : requestData) {
-            requestDataMap.put(data.getCart_record_id(), data.getQuantity());
+        for (CartRecordDTO data : cartRecordDTOS) {
+            requestDataMap.put(data.getId(), data.getQuantity());
         }
         for (CartRecord cartRecord : cartRecords) {
             //calculate stock for each record. Then compare to the quantity sent in the request (NOT THE QUANTITY IN THE DATABASE)

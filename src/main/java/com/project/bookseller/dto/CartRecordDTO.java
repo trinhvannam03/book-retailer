@@ -10,6 +10,7 @@ public class CartRecordDTO {
     private int quantity;
     private BookDTO book;
 
+
     public static CartRecordDTO fromCartRecord(CartRecord cartRecord) {
         CartRecordDTO cartRecordDTO = new CartRecordDTO();
         cartRecordDTO.setId(cartRecord.getCartRecordId());

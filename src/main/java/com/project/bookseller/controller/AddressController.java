@@ -66,23 +66,4 @@ public class AddressController {
         return new ResponseEntity<>(cityDTOs, HttpStatusCode.valueOf(200));
     }
 
-    @GetMapping("/")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<UserAddressDTO>> getAddresses(@AuthenticationPrincipal UserDetails userDetails) {
-        List<UserAddressDTO> userAddressDTOs = new ArrayList<>();
-        try {
-            userAddressDTOs = addressService.findAddresses(userDetails);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new ResponseEntity<>(userAddressDTOs, HttpStatusCode.valueOf(200));
-    }
-
-
-    @PostMapping("/")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UserAddressDTO> addAddress(@RequestBody UserAddressDTO userAddressDTO, @AuthenticationPrincipal UserDetails userDetails) {
-        UserAddressDTO userAddressDTOs = addressService.createAddress(userDetails, userAddressDTO);
-        return new ResponseEntity<>(userAddressDTOs, HttpStatusCode.valueOf(200));
-    }
 }

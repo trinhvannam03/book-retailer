@@ -17,7 +17,7 @@ public class AddressService {
     private final UserAddressRepository userAddressRepository;
 
     @Transactional
-    public List<UserAddressDTO> findAddresses(UserDetails userDetails) {
+    public List<UserAddressDTO> getAddresses(UserDetails userDetails) {
         List<UserAddressDTO> userAddressDTOs = new ArrayList<>();
         List<UserAddress> userAddresses = userAddressRepository.findUserAddressesByUserId(userDetails.getUserId());
         for (UserAddress userAddress : userAddresses) {

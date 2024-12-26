@@ -49,7 +49,6 @@ public class OrderInformationDTO {
         userAddressDTO.setFullAddress(orderInformation.getFullAddress());
         dto.setAddress(userAddressDTO);
         for (OrderRecord orderRecord : orderInformation.getOrderRecords()) {
-            System.out.println(orderRecord.getOrderInformation().getOrderStatus());
             dto.getItems().add(OrderRecordDTO.convertFromEntity(orderRecord));
         }
         return dto;

@@ -7,6 +7,7 @@ import com.project.bookseller.dto.UserAddressDTO;
 import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.entity.user.Session;
 import com.project.bookseller.exceptions.PassWordNotMatch;
+import com.project.bookseller.service.AddressService;
 import com.project.bookseller.service.OrderService;
 import com.project.bookseller.service.UserAddressService;
 import com.project.bookseller.service.UserService;
@@ -17,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +31,7 @@ public class UserController {
     private final UserAddressService userAddressService;
     private final UserService userService;
     private final OrderService orderService;
+    private final AddressService addressService;
 
     //get addresses
     @GetMapping("/address")
@@ -85,5 +88,12 @@ public class UserController {
         }
         Set<Session> sessions = userService.getSessions(userDetails);
         return new ResponseEntity<>(sessions, HttpStatusCode.valueOf(200));
+    }
+
+    @PostMapping("/address")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserAddressDTO> createUserAddress(@RequestBody UserAddressDTO userAddressDTO, @AuthenticationPrincipal UserDetails userDetails) {
+        UserAddressDTO userAddressDTOs = addressService.createAddress(userDetails, userAddressDTO);
+        return new ResponseEntity<>(userAddressDTOs, HttpStatusCode.valueOf(200));
     }
 }

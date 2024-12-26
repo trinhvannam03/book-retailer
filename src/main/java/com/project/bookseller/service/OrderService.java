@@ -112,7 +112,6 @@ public class OrderService {
         PaymentMethod payment = PaymentMethod.COD;
         OrderStatus status = OrderStatus.PROCESSING;
         double total = 0;
-        System.out.println(110);
 //Validate discount
         Double estimatedDiscount = info.getEstimatedDiscount();
         double calculatedDiscount = calculateDiscount(info.getAppliedCoupon());
@@ -144,7 +143,6 @@ public class OrderService {
         }
 //Validate items
 //StockRecord Entities are stored in the persistence context.
-        System.out.println(134);
 
         List<Long> cartRecordIds = new ArrayList<>();
         Map<Long, OrderRecordDTO> itemsMap = new HashMap<>();
@@ -153,7 +151,6 @@ public class OrderService {
             itemsMap.put(cartRecordId, item);
             cartRecordIds.add(cartRecordId);
         }
-        System.out.println(143);
         List<CartRecord> cartRecords = cartRecordRepository.findCartRecordsWithStock(userDetails.getUserId(), cartRecordIds);
         //items must be in cart, checkout price must be equal or greater than price, and stock must be sufficient, but quantity in cart may vary.
         if (cartRecords.size() == items.size()) {
@@ -161,9 +158,7 @@ public class OrderService {
                 Book book = cartRecord.getBook();
                 OrderRecordDTO item = itemsMap.get(cartRecord.getCartRecordId());
                 Double price = book.getPrice();
-                System.out.println(price);
                 Double checkOutPrice = item.getPrice();
-                System.out.println(checkOutPrice);
                 int quantity = item.getQuantity();
                 List<StockRecord> stockRecords = book.getStockRecords();
                 total += ((Integer) itemsMap.get(cartRecord.getCartRecordId()).getQuantity()) * cartRecord.getBook().getPrice();
@@ -201,13 +196,11 @@ public class OrderService {
             boolean retry = true;
             List<OrderRecord> orderRecords = new ArrayList<>();
             Map<Long, StockRecord> stockRecords = cartRecords.stream().collect(toMap(CartRecord::getCartRecordId, std -> std.getBook().getStockRecords().get(0)));
-            System.out.println(184);
             for (CartRecord cartRecord : cartRecords) {
                 StockRecord stockRecord = stockRecords.get(cartRecord.getCartRecordId());
                 final int quantity = itemsMap.get(cartRecord.getCartRecordId()).getQuantity();
                 stockRecord.setQuantity(stockRecord.getQuantity() - quantity);
                 OrderRecord orderRecord = new OrderRecord();
-                System.out.println(191);
                 while (retry) {
                     try {
                         stockRecordRepository.saveAndFlush(stockRecord);

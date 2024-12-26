@@ -60,11 +60,8 @@ public class UserService {
         if (userDetails != null && passwordEncoder.matches(password, userDetails.getPasswordHash())) {
             UserDTO userDTO = UserDTO.convertFromEntity(userDetails.getUser());
             Session session = sessionService.createSession(userDetails.getUser());
-            System.out.println(session);
             String accessToken = tokenService.generateAccessToken(userDetails, session.getSessionId());
             String refreshToken = tokenService.generateRefreshToken(userDetails, session.getSessionId());
-            System.out.println(accessToken);
-            System.out.println(refreshToken);
             userDTO.setAccessToken(accessToken);
             userDTO.setRefreshToken(refreshToken);
             session.setBrowserName(credentials.getBrowserName());
@@ -120,11 +117,9 @@ public class UserService {
         String confirmedPassword = credentials.getConfirmedPassword();
         String passwordHash = userDetails.getPasswordHash();
         if (!currentPassword.isEmpty() && !newPassword.isEmpty() && !confirmedPassword.isEmpty()) {
-            System.out.println("82");
             Map<String, Object> result = new HashMap<>();
             if (newPassword.equals(confirmedPassword) && passwordEncoder.matches(currentPassword, passwordHash)) {
                 User user = userDetails.getUser();
-                System.out.println("86");
                 user.setPasswordHash(passwordEncoder.encode(newPassword));
                 userRepository.save(user);
                 result.put("message", "Password Changed");

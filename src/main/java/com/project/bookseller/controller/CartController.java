@@ -23,18 +23,8 @@ import java.util.Map;
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
 public class CartController {
-    private final CartRecordRepository cartRecordRepository;
-    private final BookRepository bookRepository;
     private final CartService cartService;
-    private final BookService bookService;
 
-    @Data
-    public static class RequestData {
-        private String isbn;
-        private int quantity;
-        private Long cart_record_id;
-        private Long book_id;
-    }
     //add to cart
     @PostMapping("/")
     @PreAuthorize("isAuthenticated()")
@@ -73,25 +63,23 @@ public class CartController {
 
     //update quantity in cart
     @PutMapping("/update")
-    ResponseEntity<CartRecordDTO> updateCart(@AuthenticationPrincipal UserDetails userDetails, @RequestBody Map<String, Object> requestData) {
-        Long cartRecordId = ((Integer) requestData.get("cart_record_id")).longValue();
-        Integer quantity = (Integer) requestData.get("quantity");
+    ResponseEntity<CartRecordDTO> updateCart(@AuthenticationPrincipal UserDetails userDetails, @RequestBody CartRecordDTO cartRecordDTO) {
+        Long cartRecordId = cartRecordDTO.getId();
+        Integer quantity = cartRecordDTO.getQuantity();
         try {
-            CartRecordDTO cartRecordDTO = cartService.updateCart(userDetails, cartRecordId, quantity);
-            return ResponseEntity.ok(cartRecordDTO);
+            CartRecordDTO cartRecord = cartService.updateCart(userDetails, cartRecordId, quantity);
+            return ResponseEntity.ok(cartRecord);
         } catch (ResourceNotFoundException | NotEnoughStockException e) {
             e.printStackTrace();
             return new ResponseEntity<>(HttpStatusCode.valueOf(400));
         }
     }
-
-
     //check and return checked items when accessing checkout page.
     @PostMapping("/checked-items")
-    ResponseEntity<List<CartRecordDTO>> getCheckedItems(@AuthenticationPrincipal UserDetails userDetails, @RequestBody List<RequestData> requestData) {
+    ResponseEntity<List<CartRecordDTO>> getCheckedItems(@AuthenticationPrincipal UserDetails userDetails, @RequestBody List<CartRecordDTO> cartRecordDTOs) {
         try {
-            List<CartRecordDTO> cartRecordDTOs = cartService.getCheckedItems(userDetails, requestData);
-            return ResponseEntity.ok(cartRecordDTOs);
+            List<CartRecordDTO> cartRecords = cartService.getCheckedItems(userDetails, cartRecordDTOs);
+            return ResponseEntity.ok(cartRecords);
         } catch (Exception e) {
             e.printStackTrace();
             return new ResponseEntity<>(HttpStatusCode.valueOf(400));
