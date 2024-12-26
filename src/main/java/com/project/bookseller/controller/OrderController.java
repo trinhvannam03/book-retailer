@@ -1,7 +1,7 @@
 package com.project.bookseller.controller;
 
 import com.project.bookseller.authentication.UserDetails;
-import com.project.bookseller.dto.OrderInformationDTO;
+import com.project.bookseller.dto.order.OrderInformationDTO;
 import com.project.bookseller.exceptions.DataMismatchException;
 import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.service.OrderService;
@@ -28,9 +28,10 @@ public class OrderController {
     private final PaymentService paymentService;
     private final OrderService orderService;
 
+    //create order
     @PostMapping("/")
     @PreAuthorize("isAuthenticated()")
-    ResponseEntity<Map<String, Object>> placeOrder(@RequestBody OrderInformationDTO info, @AuthenticationPrincipal UserDetails userDetails) {
+    ResponseEntity<Map<String, Object>> createOrder(@RequestBody OrderInformationDTO info, @AuthenticationPrincipal UserDetails userDetails) {
         try {
             Map<String, Object> response = orderService.createOrder(userDetails, info);
             return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));

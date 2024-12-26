@@ -1,5 +1,6 @@
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.order;
 
+import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.entity.order.OrderRecord;
 import lombok.Data;
 

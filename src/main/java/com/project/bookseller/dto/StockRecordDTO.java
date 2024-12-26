@@ -1,5 +1,6 @@
 package com.project.bookseller.dto;
 
+import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.entity.location.StockRecord;
 import lombok.Data;
 

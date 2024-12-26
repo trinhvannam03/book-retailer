@@ -1,6 +1,7 @@
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.book;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.project.bookseller.dto.StockRecordDTO;
 import com.project.bookseller.entity.book.Book;
 import lombok.Data;
 

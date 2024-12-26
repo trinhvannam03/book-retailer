@@ -1,4 +1,4 @@
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.auth;
 
 import com.project.bookseller.validation.UniqueIdentifier;
 import jakarta.validation.constraints.Email;

@@ -1,7 +1,7 @@
 package com.project.bookseller.service;
 
 import com.project.bookseller.authentication.UserDetails;
-import com.project.bookseller.dto.UserAddressDTO;
+import com.project.bookseller.dto.address.UserAddressDTO;
 import com.project.bookseller.entity.user.UserAddress;
 import com.project.bookseller.repository.UserAddressRepository;
 import lombok.RequiredArgsConstructor;

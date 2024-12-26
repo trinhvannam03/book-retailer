@@ -1,8 +1,8 @@
 package com.project.bookseller.service;
 
 import com.project.bookseller.authentication.UserDetails;
-import com.project.bookseller.dto.AuthDTO;
-import com.project.bookseller.dto.RegisterDTO;
+import com.project.bookseller.dto.auth.AuthDTO;
+import com.project.bookseller.dto.auth.RegisterDTO;
 import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.entity.user.Session;
 import com.project.bookseller.entity.user.User;

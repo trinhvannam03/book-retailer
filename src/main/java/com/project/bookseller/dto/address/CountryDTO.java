@@ -1,4 +1,4 @@
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.address;
 
 import com.project.bookseller.entity.user.address.Country;
 import lombok.Data;

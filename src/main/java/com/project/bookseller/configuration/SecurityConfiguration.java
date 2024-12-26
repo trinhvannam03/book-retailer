@@ -34,10 +34,6 @@ public class SecurityConfiguration {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -57,8 +53,8 @@ public class SecurityConfiguration {
                                                   CorsConfigurationSource corsConfigurationSource,
                                                   JwtValidationFilter jwtAuthenticationFilter
     ) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable).sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        http.csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.cors(cors -> cors.configurationSource(corsConfigurationSource));
 
         http.authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll());
@@ -66,24 +62,4 @@ public class SecurityConfiguration {
         return http.build();
     }
 
-    @Bean
-    public DataSource dataSource() {
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");  // Change based on your database
-        dataSource.setUrl("jdbc:mysql://localhost:3306/bookchain");
-        dataSource.setUsername("root");
-        dataSource.setPassword("9786041126244");
-        return dataSource;
-    }
-
-    @Bean
-    public Connection connection(DataSource dataSource) throws SQLException {
-        return dataSource.getConnection();
-    }
-    @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule()); // Register module to handle Java 8 time
-        return mapper;
-    }
 }

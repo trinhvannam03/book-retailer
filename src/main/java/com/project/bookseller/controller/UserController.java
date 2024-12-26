@@ -1,9 +1,9 @@
 package com.project.bookseller.controller;
 
 import com.project.bookseller.authentication.UserDetails;
-import com.project.bookseller.dto.AuthDTO;
-import com.project.bookseller.dto.OrderInformationDTO;
-import com.project.bookseller.dto.UserAddressDTO;
+import com.project.bookseller.dto.auth.AuthDTO;
+import com.project.bookseller.dto.order.OrderInformationDTO;
+import com.project.bookseller.dto.address.UserAddressDTO;
 import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.entity.user.Session;
 import com.project.bookseller.exceptions.PassWordNotMatch;
@@ -18,7 +18,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

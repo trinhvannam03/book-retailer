@@ -1,15 +1,14 @@
 package com.project.bookseller.service;
 
 import com.project.bookseller.authentication.UserDetails;
-import com.project.bookseller.controller.CartController;
 import com.project.bookseller.dto.CartRecordDTO;
-import com.project.bookseller.entity.location.StockRecord;
 import com.project.bookseller.entity.book.Book;
+import com.project.bookseller.entity.location.StockRecord;
 import com.project.bookseller.entity.user.CartRecord;
-import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.exceptions.NotEnoughStockException;
-import com.project.bookseller.repository.book.BookRepository;
+import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.repository.CartRecordRepository;
+import com.project.bookseller.repository.book.BookRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -63,7 +62,6 @@ public class CartService {
         /*
         shared findCartRecordsWithStock(Long userId, List<Long> cartRecordIds)
          method takes an array of id as parameters(get all, get checked items to check out,
-
         * */
         List<CartRecord> cartRecords = recordRepository.findCartRecordsWithStock(userDetails.getUser().getUserId(), null);
         List<CartRecordDTO> cartRecordDTOs = cartRecords.stream().map(CartRecordDTO::fromCartRecord).toList();
@@ -75,7 +73,6 @@ public class CartService {
         return cartRecordDTOs;
     }
 
-    //delete from cart
     //transactional, delete if all records are from the same user. If not, roll back the transaction.
     @Transactional(propagation = Propagation.REQUIRED, rollbackFor = ResourceNotFoundException.class)
     public void deleteFromCart(UserDetails userDetails, List<Long> cartRecordIds) throws ResourceNotFoundException {
@@ -115,6 +112,7 @@ public class CartService {
         throw new ResourceNotFoundException("No such item in cart!");
     }
 
+    //pre-check checked items to check out
     public List<CartRecordDTO> getCheckedItems(UserDetails userDetails, List<CartRecordDTO> cartRecordDTOS) {
         List<CartRecord> cartRecords = cartRecordRepository.findCartRecordsWithStock(userDetails.getUser().getUserId(), cartRecordDTOS.stream().map(CartRecordDTO::getId).toList());
         //some items in the data have been deleted. throw an error

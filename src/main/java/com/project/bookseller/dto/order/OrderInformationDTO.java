@@ -1,7 +1,8 @@
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.order;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.project.bookseller.dto.address.UserAddressDTO;
 import com.project.bookseller.entity.order.OrderInformation;
 import com.project.bookseller.entity.order.OrderRecord;
 import com.project.bookseller.entity.order.OrderStatus;

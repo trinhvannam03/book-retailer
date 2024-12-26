@@ -10,17 +10,4 @@ import org.springframework.session.data.redis.config.annotation.web.http.EnableR
 @EnableCaching
 public class SessionConfiguration {
 
-//    @Bean
-//    public CookieSerializer cookieSerializer() {
-//        DefaultCookieSerializer cookieSerializer = new DefaultCookieSerializer();
-//        cookieSerializer.setCookieName("SESSIONID"); // Set your session cookie name here
-//        cookieSerializer.setCookiePath("/");
-//        return cookieSerializer;
-//    }
-
-//    @Bean
-//    public SessionRepositoryFilter<?> springSessionRepositoryFilter(RedisConnectionFactory connectionFactory) {
-//        return new SessionRepositoryFilter<>(redisConnectionFactory());
-//    }
-
 }

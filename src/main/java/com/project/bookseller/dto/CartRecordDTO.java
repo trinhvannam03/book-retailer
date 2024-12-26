@@ -1,7 +1,7 @@
 package com.project.bookseller.dto;
 
+import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.entity.user.CartRecord;
-import jakarta.persistence.Embedded;
 import lombok.Data;
 
 @Data

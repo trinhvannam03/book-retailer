@@ -1,4 +1,4 @@
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.order;
 
 import lombok.Data;
 

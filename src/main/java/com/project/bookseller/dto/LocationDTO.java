@@ -1,5 +1,6 @@
 package com.project.bookseller.dto;
 
+import com.project.bookseller.dto.address.CityDTO;
 import com.project.bookseller.entity.location.Location;
 import com.project.bookseller.entity.user.address.Coordinates;
 import jakarta.persistence.Embedded;

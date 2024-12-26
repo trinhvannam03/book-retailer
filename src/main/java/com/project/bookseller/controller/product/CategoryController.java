@@ -1,6 +1,6 @@
 package com.project.bookseller.controller.product;
 
-import com.project.bookseller.dto.CategoryDTO;
+import com.project.bookseller.dto.book.CategoryDTO;
 import com.project.bookseller.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

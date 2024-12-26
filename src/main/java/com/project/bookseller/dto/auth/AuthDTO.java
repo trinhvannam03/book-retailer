@@ -1,5 +1,5 @@
 
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.auth;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.project.bookseller.validation.Identifier;

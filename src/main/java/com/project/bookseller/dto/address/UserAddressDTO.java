@@ -1,4 +1,4 @@
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.address;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.project.bookseller.entity.user.UserAddress;

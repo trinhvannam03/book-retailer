@@ -1,4 +1,4 @@
-package com.project.bookseller.dto;
+package com.project.bookseller.dto.book;
 
 import com.project.bookseller.entity.book.Category;
 import lombok.Data;

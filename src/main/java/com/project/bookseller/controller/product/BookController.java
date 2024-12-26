@@ -1,6 +1,6 @@
 package com.project.bookseller.controller.product;
 
-import com.project.bookseller.dto.BookDTO;
+import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.repository.book.BookRepository;
 import com.project.bookseller.service.BookService;

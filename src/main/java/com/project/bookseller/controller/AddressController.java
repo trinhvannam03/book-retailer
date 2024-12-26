@@ -1,10 +1,8 @@
 package com.project.bookseller.controller;
 
-import com.project.bookseller.authentication.UserDetails;
-import com.project.bookseller.dto.CityDTO;
-import com.project.bookseller.dto.CountryDTO;
-import com.project.bookseller.dto.StateDTO;
-import com.project.bookseller.dto.UserAddressDTO;
+import com.project.bookseller.dto.address.CityDTO;
+import com.project.bookseller.dto.address.CountryDTO;
+import com.project.bookseller.dto.address.StateDTO;
 import com.project.bookseller.entity.user.address.City;
 import com.project.bookseller.entity.user.address.Country;
 import com.project.bookseller.entity.user.address.State;
@@ -16,8 +14,6 @@ import com.project.bookseller.service.AddressService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
