@@ -1,4 +1,4 @@
-package com.project.bookseller.service;
+package com.project.bookseller.service.auth;
 
 
 import com.project.bookseller.authentication.UserDetails;
@@ -59,7 +59,7 @@ public class TokenService {
             Claims claims = extractClaims(accessToken);
             String identifier = claims.getSubject();
             String issuer = claims.getIssuer();
-            UserDetails userDetails = userDetailsService.loadUserDetailsByIdentifier(identifier);
+            UserDetails userDetails = userDetailsService.loadUserByIdentifier(identifier);
             if (userDetails != null && issuer.equals(ISSUER_ID)) {
                 return userDetails;
             }
@@ -73,7 +73,7 @@ public class TokenService {
         try {
             Claims claims = extractClaims(refreshToken);
             String identifier = claims.getSubject();
-            UserDetails userDetails = userDetailsService.loadUserDetailsByIdentifier(identifier);
+            UserDetails userDetails = userDetailsService.loadUserByIdentifier(identifier);
             Map<String, String> map = new HashMap<>();
             if (userDetails != null && claims.getExpiration().after(new Date())) {
                 map.put("accessToken", generateAccessToken(userDetails, session.getSessionId()));

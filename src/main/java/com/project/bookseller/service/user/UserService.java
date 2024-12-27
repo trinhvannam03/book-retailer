@@ -1,14 +1,20 @@
-package com.project.bookseller.service;
+package com.project.bookseller.service.user;
 
 import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.dto.address.UserAddressDTO;
 import com.project.bookseller.dto.auth.AuthDTO;
 import com.project.bookseller.dto.auth.RegisterDTO;
 import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.entity.user.Session;
 import com.project.bookseller.entity.user.User;
+import com.project.bookseller.entity.user.UserAddress;
 import com.project.bookseller.exceptions.PassWordNotMatch;
 import com.project.bookseller.repository.OrderInformationRepository;
+import com.project.bookseller.repository.UserAddressRepository;
 import com.project.bookseller.repository.UserRepository;
+import com.project.bookseller.service.auth.SessionService;
+import com.project.bookseller.service.auth.TokenService;
+import com.project.bookseller.service.auth.UserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.apache.http.auth.InvalidCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +34,7 @@ public class UserService {
     private final UserDetailsService userDetailsService;
     private final TokenService tokenService;
     private final SessionService sessionService;
+    private final UserAddressRepository userAddressRepository;
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public UserDTO register(RegisterDTO info) throws PassWordNotMatch {
@@ -56,7 +63,7 @@ public class UserService {
         if (password == null || identifier == null) {
             throw new InvalidCredentialsException("Invalid Credentials");
         }
-        UserDetails userDetails = userDetailsService.loadUserDetailsByIdentifier(identifier);
+        UserDetails userDetails = userDetailsService.loadUserByIdentifier(identifier);
         if (userDetails != null && passwordEncoder.matches(password, userDetails.getPasswordHash())) {
             UserDTO userDTO = UserDTO.convertFromEntity(userDetails.getUser());
             Session session = sessionService.createSession(userDetails.getUser());
@@ -92,8 +99,24 @@ public class UserService {
         return userDTO;
     }
 
+    public Set<Session> getSessions(UserDetails userDetails) {
+        Set<Session> sessions = sessionService.getSessions(userDetails.getUserId());
+        for (Session session : sessions) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
+            String sessionDescription = String.format(
+                    "Created at %s on %s, IP address %s, Browser  %s",
+                    session.getCreatedAt().format(formatter),
+                    session.getBrowserName(),
+                    session.getIpAddress(),
+                    session.getUserAgent()
+            );
+            session.setSessionDescription(sessionDescription);
+        }
+        Set<Session> sortedSessions = new TreeSet<>(sessions).descendingSet();
+        return sortedSessions;
+    }
+
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    //pessimistic locking, lock write
     public UserDTO updateUserProfile(UserDetails userDetails, UserDTO userDTO) {
         try {
             User user = userDetails.getUser();
@@ -129,20 +152,27 @@ public class UserService {
         throw new PassWordNotMatch("message", "Passwords mismatch!");
     }
 
-    public Set<Session> getSessions(UserDetails userDetails) {
-        Set<Session> sessions = sessionService.getSessions(userDetails.getUserId());
-        for (Session session : sessions) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
-            String sessionDescription = String.format(
-                    "Created at %s on %s, IP address %s, Browser  %s",
-                    session.getCreatedAt().format(formatter),
-                    session.getBrowserName(),
-                    session.getIpAddress(),
-                    session.getUserAgent()
-            );
-            session.setSessionDescription(sessionDescription);
+    public List<UserAddressDTO> findUserAddresses(UserDetails userDetails) {
+        List<UserAddress> userAddresses = userAddressRepository.findUserAddressesByUserId(userDetails.getUser().getUserId());
+        List<UserAddressDTO> userAddressDTOs = new ArrayList<>();
+        for (UserAddress userAddress : userAddresses) {
+            UserAddressDTO userAddressDTO = UserAddressDTO.convertFromUserAddress(userAddress);
+            userAddressDTOs.add(userAddressDTO);
         }
-        Set<Session> sortedSessions = new TreeSet<>(sessions).descendingSet();
-        return sortedSessions;
+        return userAddressDTOs;
+    }
+
+    @Transactional
+    public UserAddressDTO createAddress(UserDetails userDetails, UserAddressDTO userAddressDTO) {
+        UserAddress userAddress = new UserAddress();
+        userAddress.getCity().setCityName(userAddressDTO.getCity().getName());
+        userAddress.getCity().setCityId(userAddressDTO.getCity().getId());
+        userAddress.setFullName(userAddressDTO.getFullName());
+        userAddress.setPhone(userAddressDTO.getPhone());
+        userAddress.setDetailedAddress(userAddressDTO.getDetailedAddress());
+        userAddress.setUser(userDetails.getUser());
+        userAddressRepository.save(userAddress);
+        userAddressDTO.setId(userAddress.getUserAddressId());
+        return userAddressDTO;
     }
 }

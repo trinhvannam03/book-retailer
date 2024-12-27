@@ -1,4 +1,4 @@
-package com.project.bookseller.service;
+package com.project.bookseller.service.user;
 
 import com.project.bookseller.authentication.UserDetails;
 import com.project.bookseller.dto.CartRecordDTO;

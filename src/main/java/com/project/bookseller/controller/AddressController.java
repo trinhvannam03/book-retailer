@@ -10,7 +10,6 @@ import com.project.bookseller.repository.address.CityRepository;
 import com.project.bookseller.repository.address.CountryRepository;
 import com.project.bookseller.repository.address.StateRepository;
 import com.project.bookseller.repository.UserAddressRepository;
-import com.project.bookseller.service.AddressService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +25,8 @@ public class AddressController {
     private final CountryRepository countryRepository;
     private final StateRepository stateRepository;
     private final CityRepository cityRepository;
-    private final UserAddressRepository userAddressRepository;
-    private final AddressService addressService;
 
+    //get cities, states, countries to display
     @GetMapping("/countries")
     public ResponseEntity<List<CountryDTO>> countries() {
         List<Country> countriesDTO = countryRepository.findAll();

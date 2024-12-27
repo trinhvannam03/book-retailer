@@ -1,4 +1,4 @@
-package com.project.bookseller.service;
+package com.project.bookseller.service.auth;
 
 import com.project.bookseller.entity.user.Session;
 import com.project.bookseller.entity.user.SessionStatus;

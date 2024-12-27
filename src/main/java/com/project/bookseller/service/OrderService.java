@@ -17,6 +17,7 @@ import com.project.bookseller.entity.order.PaymentMethod;
 import com.project.bookseller.entity.user.CartRecord;
 import com.project.bookseller.exceptions.DataMismatchException;
 import com.project.bookseller.exceptions.NotEnoughStockException;
+import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.repository.*;
 import com.project.bookseller.repository.address.CityRepository;
 import jakarta.persistence.OptimisticLockException;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static java.util.stream.Collectors.*;
@@ -43,56 +45,14 @@ public class OrderService {
     private final StockRecordRepository stockRecordRepository;
     private final CityRepository cityRepository;
 
-    //            if ((Integer) createOrder.getPayment_method().get("id") == 1000) {
-//            redirect = "https://localhost:3000/fallback";
-//        } else {
-//            switch ((Integer) createOrder.getPayment_method().get("sub_method")) {
-//                case 1: {
-//                    redirect = paymentService.createQueryString(orderValue, "VNPAYQR");
-//                    break;
-//                }
-//                case 2: {
-//                    redirect = paymentService.createQueryString(orderValue, "VNBANK");
-//                    break;
-//                }
-//                case 3: {
-//                    redirect = paymentService.createQueryString(orderValue, "INTCARD");
-//                    break;
-//                }
-//            }
-//        }
-//        result.put("redirect_url", redirect);
+    //for demonstration purpose only
     private double calculateShipping(UserAddressDTO address) {
-
-//            case 32 -> 5.00; // Baden-Württemberg
-//            case 33 -> 5.50; // Bavaria
-//            case 34 -> 4.00; // Berlin
-//            case 35 -> 5.50; // Brandenburg
-//            case 36 -> 4.50; // Bremen
-//            case 37 -> 4.50; // Hamburg
-//            case 38 -> 5.00; // Hesse
-//            case 39 -> 5.50; // Lower Saxony
-//            case 40 -> 6.00; // Mecklenburg-Vorpommern
-//            case 41 -> 5.00; // North Rhine-Westphalia
-//            case 42 -> 5.50; // Rhineland-Palatinate
-//            case 43 -> 5.00; // Saarland
-//            case 44 -> 6.00; // Saxony
-//            case 45 -> 6.00; // Saxony-Anhalt
-//            case 46 -> 5.50; // Schleswig-Holstein
-//            case 47 -> 5.50; // Thuringia
-// Invalid State ID
         return 0;
     }
 
+    //for demonstration purpose only
     private double calculateDiscount(String coupon) {
-        if (coupon.isBlank()) {
-            return 0;
-        }
-        return switch (coupon) {
-            case "COUPON50" -> 50;
-            case "COUPON10" -> 10;
-            default -> 0;
-        };
+        return 0;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = DataMismatchException.class)
@@ -147,7 +107,6 @@ public class OrderService {
         }
 //Validate items
 //StockRecord Entities are stored in the persistence context.
-
         List<Long> cartRecordIds = new ArrayList<>();
         Map<Long, OrderRecordDTO> itemsMap = new HashMap<>();
         for (OrderRecordDTO item : items) {
@@ -232,7 +191,7 @@ public class OrderService {
             result.put("items", items);
             if (vnp_BankCode != null) {
                 String vnp_Amount = String.valueOf((int) (doubleTotal * 25000));
-                String redirect = paymentService.createQueryString(vnp_Amount, vnp_BankCode);
+                String redirect = paymentService.createRedirectUrl(vnp_Amount, vnp_BankCode);
                 result.put("redirect", redirect);
             }
             result.put("message", "Order created successfully");
@@ -242,9 +201,37 @@ public class OrderService {
         }
     }
 
-    public List<OrderInformationDTO> getUserOrders(UserDetails userDetails) {
+    public List<OrderInformationDTO> getOrders(UserDetails userDetails) {
         List<OrderInformation> orders = orderInformationRepository
                 .findOrderInformationByUserId(userDetails.getUserId());
         return orders.stream().map(OrderInformationDTO::convertFromEntity).toList();
+    }
+
+    public void clearPendingOrders() {
+        List<OrderInformation> orderInformation = orderInformationRepository.findAll();
+        for (OrderInformation order : orderInformation) {
+            if (order.getOrderStatus() == OrderStatus.PENDING) {
+                LocalDateTime createdAt = order.getCreatedAt();
+                if (createdAt.isBefore(LocalDateTime.now().minusMinutes(30))) {
+                    orderInformationRepository.delete(order);
+                }
+            }
+        }
+    }
+
+    public OrderInformationDTO getOrder(UserDetails userDetails, Long orderInformationId) {
+        Optional<OrderInformation> orderInformation = orderInformationRepository.findOrderInformationByOrderInformationId(orderInformationId);
+        if (orderInformation.isPresent()) {
+            OrderInformation order = orderInformation.get();
+            if (Objects.equals(order.getUserId(), userDetails.getUserId())) {
+                OrderInformationDTO orderInformationDTO = OrderInformationDTO.convertFromEntity(order);
+                for (OrderRecord orderRecord : order.getOrderRecords()) {
+                    OrderRecordDTO orderRecordDTO = OrderRecordDTO.convertFromEntity(orderRecord);
+                    orderInformationDTO.getItems().add(orderRecordDTO);
+                }
+                return orderInformationDTO;
+            }
+        }
+        throw new ResourceNotFoundException("No order found!");
     }
 }

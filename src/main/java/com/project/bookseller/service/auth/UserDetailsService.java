@@ -1,4 +1,4 @@
-package com.project.bookseller.service;
+package com.project.bookseller.service.auth;
 
 import com.project.bookseller.authentication.UserDetails;
 import com.project.bookseller.entity.user.User;
@@ -15,7 +15,7 @@ import java.util.Optional;
 public class UserDetailsService {
     private final UserRepository userRepository;
 
-    public UserDetails loadUserDetailsByIdentifier(String identifier) {
+    public UserDetails loadUserByIdentifier(String identifier) {
         if (identifier == null || identifier.isEmpty()) {
             return null;
         }
@@ -30,4 +30,5 @@ public class UserDetailsService {
         }
         return optionalUser.map(UserDetails::new).orElse(null);
     }
+
 }

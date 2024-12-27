@@ -7,10 +7,8 @@ import com.project.bookseller.dto.address.UserAddressDTO;
 import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.entity.user.Session;
 import com.project.bookseller.exceptions.PassWordNotMatch;
-import com.project.bookseller.service.AddressService;
 import com.project.bookseller.service.OrderService;
-import com.project.bookseller.service.UserAddressService;
-import com.project.bookseller.service.UserService;
+import com.project.bookseller.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -27,16 +25,14 @@ import java.util.Set;
 @RequestMapping("/api/user")
 
 public class UserController {
-    private final UserAddressService userAddressService;
     private final UserService userService;
     private final OrderService orderService;
-    private final AddressService addressService;
 
     //get addresses
     @GetMapping("/address")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<UserAddressDTO>> getUserAddresses(@AuthenticationPrincipal UserDetails userDetails) {
-        List<UserAddressDTO> userAddressDTOs = userAddressService.findUserAddresses(userDetails);
+        List<UserAddressDTO> userAddressDTOs = userService.findUserAddresses(userDetails);
         return new ResponseEntity<>(userAddressDTOs, HttpStatusCode.valueOf(200));
     }
 
@@ -58,15 +54,6 @@ public class UserController {
         return new ResponseEntity<>(userDTOUpdated, HttpStatusCode.valueOf(200));
     }
 
-    @PreAuthorize("isAuthenticated()")
-    @GetMapping("/orders")
-    ResponseEntity<List<OrderInformationDTO>> getUserOrders(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            return ResponseEntity.badRequest().build();
-        }
-        List<OrderInformationDTO> orders = orderService.getUserOrders(userDetails);
-        return new ResponseEntity<>(orders, HttpStatusCode.valueOf(200));
-    }
 
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/password")
@@ -92,7 +79,7 @@ public class UserController {
     @PostMapping("/address")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserAddressDTO> createUserAddress(@RequestBody UserAddressDTO userAddressDTO, @AuthenticationPrincipal UserDetails userDetails) {
-        UserAddressDTO userAddressDTOs = addressService.createAddress(userDetails, userAddressDTO);
+        UserAddressDTO userAddressDTOs = userService.createAddress(userDetails, userAddressDTO);
         return new ResponseEntity<>(userAddressDTOs, HttpStatusCode.valueOf(200));
     }
 }

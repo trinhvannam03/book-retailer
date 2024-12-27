@@ -1,7 +1,7 @@
 package com.project.bookseller.validation;
 
 import com.project.bookseller.authentication.UserDetails;
-import com.project.bookseller.service.UserDetailsService;
+import com.project.bookseller.service.auth.UserDetailsService;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +12,7 @@ public class UniqueEmailValidator implements ConstraintValidator<UniqueIdentifie
 
     @Override
     public boolean isValid(String identifier, ConstraintValidatorContext constraintValidatorContext) {
-        UserDetails userDetails = userDetailsService.loadUserDetailsByIdentifier(identifier);
+        UserDetails userDetails = userDetailsService.loadUserByIdentifier(identifier);
         return userDetails == null;
     }
 }

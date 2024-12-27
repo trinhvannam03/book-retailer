@@ -11,14 +11,12 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -39,6 +37,30 @@ public class OrderController {
             return ResponseEntity.badRequest().build();
         } catch (UnsupportedEncodingException | NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/")
+    ResponseEntity<List<OrderInformationDTO>> getOrders(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        List<OrderInformationDTO> orders = orderService.getOrders(userDetails);
+        return new ResponseEntity<>(orders, HttpStatusCode.valueOf(200));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{orderId}")
+    ResponseEntity<OrderInformationDTO> getOrder(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long orderId) {
+        if (orderId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            OrderInformationDTO order = orderService.getOrder(userDetails, orderId);
+            return new ResponseEntity<>(order, HttpStatusCode.valueOf(200));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 }

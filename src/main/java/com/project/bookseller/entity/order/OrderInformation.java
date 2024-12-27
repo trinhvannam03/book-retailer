@@ -39,6 +39,8 @@ public class OrderInformation {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+    @Column(name = "user_id", insertable = false, updatable = false)
+    private Long userId;
     private double discount = 0;
     private String coupon;
 

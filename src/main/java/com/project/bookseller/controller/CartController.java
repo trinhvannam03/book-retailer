@@ -4,7 +4,7 @@ import com.project.bookseller.authentication.UserDetails;
 import com.project.bookseller.dto.CartRecordDTO;
 import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
-import com.project.bookseller.service.CartService;
+import com.project.bookseller.service.user.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
