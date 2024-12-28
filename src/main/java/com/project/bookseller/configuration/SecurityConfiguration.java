@@ -34,7 +34,6 @@ public class SecurityConfiguration {
         return new BCryptPasswordEncoder();
     }
 
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -47,16 +46,10 @@ public class SecurityConfiguration {
         return source;
     }
 
-
     @Bean
-    SecurityFilterChain customSecurityFilterChain(HttpSecurity http,
-                                                  CorsConfigurationSource corsConfigurationSource,
-                                                  JwtValidationFilter jwtAuthenticationFilter
-    ) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+    SecurityFilterChain customSecurityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource, JwtValidationFilter jwtAuthenticationFilter) throws Exception {
+        http.csrf(AbstractHttpConfigurer::disable).sessionManagement(configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.cors(cors -> cors.configurationSource(corsConfigurationSource));
-
         http.authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll());
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
