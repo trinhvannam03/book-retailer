@@ -1,12 +1,14 @@
 package com.project.bookseller.dto.book;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.project.bookseller.dto.StockRecordDTO;
 import com.project.bookseller.entity.book.Book;
 import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +17,7 @@ import java.util.List;
 public class BookDTO implements Serializable {
     @Serial
     private static final long serialVersionUID = 4159557539810053990L;
+
     private long id;
     private String title;
     private String bookDesc;
@@ -25,10 +28,12 @@ public class BookDTO implements Serializable {
     private Integer bookHeight;
     private Integer bookLength;
     private Integer bookWeight;
+    private LocalDateTime publicationDate;
     private Integer pages;
     private long bookId;
     private Double price;
     private String publisher;
+    private String bookLanguage;
     private Integer stock;
     private List<AuthorDTO> authors = new ArrayList<>();
     private List<CategoryDTO> categories = new ArrayList<>();

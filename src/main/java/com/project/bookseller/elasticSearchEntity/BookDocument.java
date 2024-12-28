@@ -1,5 +1,7 @@
 package com.project.bookseller.elasticSearchEntity;
 
+import com.project.bookseller.dto.book.AuthorDTO;
+import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.entity.book.Author;
 import jakarta.persistence.Id;
 import lombok.Data;
@@ -12,9 +14,9 @@ import java.util.List;
 
 @Document(indexName = "books")
 @Data
-public class Book {
+public class BookDocument {
     @Id
-    private String bookId;
+    private String id;
     @Field(type = FieldType.Text)
     private String title;
 
@@ -31,5 +33,17 @@ public class Book {
     private String publisher;
 
     @Field(type = FieldType.Nested)
-    private List<Author> authors = new ArrayList<>();
+    private List<AuthorDTO> authors = new ArrayList<>();
+
+    public static BookDocument convertFromDTO(BookDTO bookDTO) {
+        BookDocument bookDocument = new BookDocument();
+        bookDocument.setId(String.valueOf(bookDTO.getBookId()));
+        bookDocument.setTitle(bookDTO.getTitle());
+        bookDocument.setPrice(bookDTO.getPrice());
+        bookDocument.setBookDesc(bookDTO.getBookDesc());
+        bookDocument.setPages(bookDTO.getPages());
+        bookDocument.setPublisher(bookDTO.getPublisher());
+        bookDocument.setAuthors(bookDTO.getAuthors());
+        return bookDocument;
+    }
 }
