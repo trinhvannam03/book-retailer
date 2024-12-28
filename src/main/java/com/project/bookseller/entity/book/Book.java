@@ -6,6 +6,7 @@ import com.project.bookseller.entity.location.StockRecord;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +26,7 @@ public class Book {
     private Integer bookWeight;
     private String publisher;
     private Integer pages;
+    private LocalDateTime publicationDate;
     private Double price;
     private String coverType;
     @ManyToMany(fetch = FetchType.LAZY)
