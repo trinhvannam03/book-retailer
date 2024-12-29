@@ -11,13 +11,13 @@ public class AuthorDTO implements Serializable {
     @Serial
     private static final long serialVersionUID = -2392238704646996537L;
     private long authorId;
-    private String fullName;
+    private String authorName;
     private String authorDesc;
 
-    public static AuthorDTO convertFromEAuthor(Author author) {
+    public static AuthorDTO convertFromEntity(Author author) {
         AuthorDTO authorDTO = new AuthorDTO();
         authorDTO.setAuthorId(author.getAuthorId());
-        authorDTO.setFullName(author.getFullName());
+        authorDTO.setAuthorName(author.getAuthorName());
         authorDTO.setAuthorDesc(author.getAuthorDesc());
         return authorDTO;
     }

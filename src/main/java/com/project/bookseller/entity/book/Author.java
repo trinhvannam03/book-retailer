@@ -12,9 +12,8 @@ public class Author {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long authorId;
-    private String fullName;
+    private String authorName;
     private String authorDesc;
-
     @ManyToMany(fetch = FetchType.LAZY, mappedBy = "authors")
     private List<Book> books = new ArrayList<>();
 }

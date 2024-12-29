@@ -38,7 +38,7 @@ public class Book {
     private List<Category> categories;
     @OneToMany(mappedBy = "book", fetch = FetchType.LAZY)
     private List<CartRecord> cartRecords = new ArrayList<>();
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "book_author",
             joinColumns = @JoinColumn(name = "book_id"),

@@ -13,7 +13,8 @@ import java.util.Optional;
 public interface BookRepository extends JpaRepository<Book, Long> {
 
 
-
+    @Query("SELECT b FROM Book b JOIN FETCH b.categories")
+    List<Book> findAllBooks();
 
     @Query("SELECT b from Book b JOIN FETCH b.stockRecords s where b.bookId = :bookId and s.location.locationType = 'ONLINE_STORE'")
     Optional<Book> findBriefBookByBookId(Long bookId);

@@ -41,14 +41,15 @@ public class DatabaseChangesListener {
             }
             //create
             else if (beforeJsonNode.isNull()) {
-                BookDocument book = new BookDocument();
+                BookDTO after = objectMapper.treeToValue(afterJsonNode, BookDTO.class);
+                BookDocument book = BookDocument.convertFromDTO(after);
                 bookDocumentService.indexBookDocument(book);
-
             }
             //update
             else {
                 BookDTO after = objectMapper.treeToValue(afterJsonNode, BookDTO.class);
                 BookDocument book = BookDocument.convertFromDTO(after);
+                System.out.println(book);
                 bookDocumentService.updateBookDocument(book);
             } //update
         } catch (Exception e) {

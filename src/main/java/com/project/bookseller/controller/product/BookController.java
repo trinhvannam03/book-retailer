@@ -1,16 +1,19 @@
 package com.project.bookseller.controller.product;
 
+import com.project.bookseller.dto.book.AuthorDTO;
 import com.project.bookseller.dto.book.BookDTO;
+import com.project.bookseller.elasticSearchEntity.AuthorDocument;
+import com.project.bookseller.elasticSearchEntity.BookDocument;
+import com.project.bookseller.elasticSearchEntity.CategoryDocument;
+import com.project.bookseller.entity.book.Book;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.repository.book.BookRepository;
 import com.project.bookseller.service.BookService;
+import com.project.bookseller.service.elasticSearch.BookDocumentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +25,7 @@ import java.util.Random;
 public class BookController {
     private final BookRepository bookRepository;
     private final BookService bookService;
-
+    private final BookDocumentService bookDocumentService;
 
     @GetMapping("/random")
     public ResponseEntity<List<BookDTO>> getRandomBooks() {
@@ -49,5 +52,44 @@ public class BookController {
         }
     }
 
+    @GetMapping("/index")
+    public ResponseEntity<BookDocument> indexAllBooks() {
+        List<Book> books = bookRepository.findAllBooks();
+        for (Book book : books) {
+            BookDocument bookDocument = new BookDocument();
+            bookDocument.setId(String.valueOf(book.getBookId()));
+            bookDocument.setTitle(book.getTitle());
+            bookDocument.setBook_desc(book.getBookDesc());
+            bookDocument.setPages(book.getPages());
+            bookDocument.setPrice(book.getPrice());
+            bookDocument.setPublisher(book.getPublisher());
+            bookDocument.setBook_cover(book.getBookCover());
+            bookDocument.setIsbn(book.getIsbn());
+            bookDocument.setAuthors(book.getAuthors().stream().map(AuthorDocument::convertFromEntity).toList());
+            bookDocument.setCategories(book.getCategories().stream().map(CategoryDocument::convertFromEntity).toList());
+            bookDocumentService.indexBookDocument(bookDocument);
+        }
+        return ResponseEntity.ok(null);
+    }
 
+    @GetMapping("search")
+    public ResponseEntity<List<BookDocument>> searchByKeyword(@RequestParam String keyword) {
+        try {
+            List<BookDocument> books = bookDocumentService.searchByKeyword(keyword);
+            return ResponseEntity.ok(books);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(null, HttpStatusCode.valueOf(500));
+        }
+    }
+
+    @GetMapping("similar-author")
+    public ResponseEntity<List<BookDocument>> getSimilarBooksByAuthor(@RequestParam String author) {
+        try {
+            List<BookDocument> books = bookDocumentService.getSimilarBooksByAuthor(author);
+            return ResponseEntity.ok(books);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatusCode.valueOf(500));
+        }
+    }
 }

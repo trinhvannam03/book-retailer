@@ -38,7 +38,7 @@ public class BookService {
             bookDTO.setCategories(categories);
             List<AuthorDTO> authors = new ArrayList<>();
             for (Author author : book.getAuthors()) {
-                AuthorDTO authorDTO = AuthorDTO.convertFromEAuthor(author);
+                AuthorDTO authorDTO = AuthorDTO.convertFromEntity(author);
                 authors.add(authorDTO);
             }
             bookDTO.setAuthors(authors);
