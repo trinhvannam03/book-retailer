@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -91,5 +92,11 @@ public class BookController {
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatusCode.valueOf(500));
         }
+    }
+
+    @GetMapping("similar")
+    public ResponseEntity<List<BookDocument>> getSimilarBooks(@RequestParam String id) throws IOException {
+        BookDocument bookDocument = bookDocumentService.getBookDocument(id);
+        return ResponseEntity.ok(bookDocumentService.getMoreLikeThis(bookDocument));
     }
 }

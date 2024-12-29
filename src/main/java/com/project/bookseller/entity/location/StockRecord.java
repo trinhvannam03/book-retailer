@@ -24,7 +24,7 @@ public class StockRecord {
     private Book book;
 
     @Version
-    private Integer version;
+    private Long version;
 
     @Override
     public boolean equals(Object o) {

@@ -47,7 +47,7 @@ public class Book {
 
     private List<Author> authors = new ArrayList<>();
 
-    @OneToMany(mappedBy = "book")
+    @OneToMany(mappedBy = "book", fetch = FetchType.EAGER)
     private List<StockRecord> stockRecords = new ArrayList<>();
 
     @Transient

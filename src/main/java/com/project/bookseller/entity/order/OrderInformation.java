@@ -49,6 +49,6 @@ public class OrderInformation {
         this.createdAt = LocalDateTime.now();
     }
 
-    @OneToMany(mappedBy = "orderInformation", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "orderInformation", fetch = FetchType.EAGER)
     List<OrderRecord> orderRecords = new ArrayList<>();
 }

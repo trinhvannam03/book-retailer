@@ -12,14 +12,13 @@ public class ScheduledTaskExecutor {
     private final OrderService orderService;
 
     //clear orders with a timed-out checkout request after 30 minutes;
-    @Scheduled(fixedRate = 1800000) //fixedDelay
+    @Scheduled(fixedRate = 10000) //fixedDelay
     public void clearPendingOrders() {
         try {
             orderService.clearPendingOrders();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.out.println("Clearing timeout pending orders...");
     }
 }
 

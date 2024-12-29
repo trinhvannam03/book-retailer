@@ -24,6 +24,7 @@ import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.UnsupportedEncodingException;
@@ -44,6 +45,7 @@ public class OrderService {
     private final OrderRecordRepository orderRecordRepository;
     private final StockRecordRepository stockRecordRepository;
     private final CityRepository cityRepository;
+
 
     //for demonstration purpose only
     private double calculateShipping(UserAddressDTO address) {
@@ -202,18 +204,33 @@ public class OrderService {
     }
 
     public List<OrderInformationDTO> getOrders(UserDetails userDetails) {
-        List<OrderInformation> orders = orderInformationRepository
-                .findOrderInformationByUserId(userDetails.getUserId());
+        List<OrderInformation> orders = orderInformationRepository.findOrderInformationByUserId(userDetails.getUserId());
         return orders.stream().map(OrderInformationDTO::convertFromEntity).toList();
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void clearPendingOrders() {
         List<OrderInformation> orderInformation = orderInformationRepository.findAll();
         for (OrderInformation order : orderInformation) {
             if (order.getOrderStatus() == OrderStatus.PENDING) {
                 LocalDateTime createdAt = order.getCreatedAt();
-                if (createdAt.isBefore(LocalDateTime.now().minusMinutes(30))) {
-                    orderInformationRepository.delete(order);
+                if (createdAt.isBefore(LocalDateTime.now().minusMinutes(1))) {
+                    List<OrderRecord> orderRecords = order.getOrderRecords();
+                    for (OrderRecord orderRecord : orderRecords) {
+                        boolean retry = true;
+                        while (retry) {
+                            try {
+                                StockRecord stockRecord = orderRecord.getBook().getStockRecords().get(0);
+                                stockRecord.setQuantity(orderRecord.getQuantity() + stockRecord.getQuantity());
+                                stockRecordRepository.saveAndFlush(stockRecord);
+                                retry = false;
+                            } catch (OptimisticLockException ignored) {
+
+                            }
+                        }
+                    }
+                    order.setOrderStatus(OrderStatus.CANCELLED);
+                    orderInformationRepository.saveAndFlush(order);
                 }
             }
         }

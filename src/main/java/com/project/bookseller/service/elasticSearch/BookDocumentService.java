@@ -2,6 +2,7 @@ package com.project.bookseller.service.elasticSearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.Like;
+import co.elastic.clients.json.JsonData;
 import com.project.bookseller.elasticSearchEntity.BookDocument;
 import com.project.bookseller.elasticSearchEntity.BookDocumentRepository;
 import com.project.bookseller.repository.book.BookRepository;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
@@ -28,6 +30,7 @@ public class BookDocumentService {
     private final BookDocumentRepository bookDocumentRepository;
     private final BookRepository bookRepository;
     private final ElasticsearchOperations elasticsearchOperations;
+
     public void indexBookDocument(BookDocument book) {
         bookDocumentRepository.save(book);
     }
@@ -39,6 +42,16 @@ public class BookDocumentService {
     public void updateBookDocument(BookDocument book) throws RuntimeException {
         indexBookDocument(book);
     }
+
+    public BookDocument getBookDocument(String book) throws RuntimeException {
+        Optional<BookDocument> bookDocumentOptional = bookDocumentRepository.findById(book);
+        if (bookDocumentOptional.isPresent()) {
+            BookDocument bookDocument = bookDocumentOptional.get();
+            return bookDocument;
+        }
+        return null;
+    }
+
     public List<BookDocument> returnResult(SearchHits<BookDocument> searchHits) {
         List<BookDocument> bookDocuments = new ArrayList<>();
         for (SearchHit<BookDocument> searchHit : searchHits) {
@@ -87,6 +100,22 @@ public class BookDocumentService {
                                 .query(keyword).fuzziness("AUTO")
                                 .boost(2.0F)))))))
                 .build();
+        SearchHits<BookDocument> searchHits = elasticsearchOperations.search(query, BookDocument.class);
+        return returnResult(searchHits);
+    }
+
+    public List<BookDocument> getMoreLikeThis(BookDocument document) throws IOException {
+        List<String> fields = Arrays.asList("title", "book_desc");
+        List<String> nestedFields = Arrays.asList("categories.category_name", "categories.category_desc");
+
+        Like like = Like.of(l -> l.document(d -> d.doc(JsonData.of(document))));
+        Query query = NativeQuery.builder().withQuery(
+                qu -> qu.bool(b -> b
+                        .should(s -> s.moreLikeThis(m -> m.fields(fields).like(like)))
+                        .should(
+                                s -> s.nested(n -> n.path("categories").query(q -> q.moreLikeThis(m -> m.like(like).fields(nestedFields))))
+                        ).mustNot(mn -> mn.match(m -> m.field("title").query(document.getTitle()))))
+                        ).build();
         SearchHits<BookDocument> searchHits = elasticsearchOperations.search(query, BookDocument.class);
         return returnResult(searchHits);
     }
