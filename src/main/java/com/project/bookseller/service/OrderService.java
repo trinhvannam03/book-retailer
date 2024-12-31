@@ -1,20 +1,16 @@
 package com.project.bookseller.service;
 
-import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.address.CityDTO;
 import com.project.bookseller.dto.address.UserAddressDTO;
 import com.project.bookseller.dto.order.OrderInformationDTO;
 import com.project.bookseller.dto.order.OrderRecordDTO;
 import com.project.bookseller.dto.order.PaymentMethodDTO;
-import com.project.bookseller.entity.order.OrderInformation;
-import com.project.bookseller.entity.order.OrderRecord;
-import com.project.bookseller.entity.location.StockRecord;
-import com.project.bookseller.entity.user.address.City;
 import com.project.bookseller.entity.book.Book;
-import com.project.bookseller.entity.order.OrderStatus;
-import com.project.bookseller.entity.order.OrderType;
-import com.project.bookseller.entity.order.PaymentMethod;
+import com.project.bookseller.entity.location.StockRecord;
+import com.project.bookseller.entity.order.*;
 import com.project.bookseller.entity.user.CartRecord;
+import com.project.bookseller.entity.user.address.City;
 import com.project.bookseller.exceptions.DataMismatchException;
 import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
@@ -24,7 +20,6 @@ import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.UnsupportedEncodingException;
@@ -33,7 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toMap;
 
 @Service
 @RequiredArgsConstructor
@@ -58,7 +53,7 @@ public class OrderService {
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = DataMismatchException.class)
-    public Map<String, Object> createOrder(UserDetails userDetails, OrderInformationDTO info) throws NotEnoughStockException, UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeyException {
+    public Map<String, Object> createOrder(UserPrincipal userDetails, OrderInformationDTO info) throws NotEnoughStockException, UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeyException {
         Map<String, Object> result = new HashMap<>();
         UserAddressDTO userAddress = info.getAddress();
         CityDTO cityDTO = userAddress.getCity();
@@ -158,39 +153,42 @@ public class OrderService {
             orderInformation.setTotal(doubleEstimatedTotal);
             orderInformation.setDiscount(calculatedDiscount);
             orderInformationRepository.save(orderInformation);
-            boolean retry = true;
-            List<OrderRecord> orderRecords = new ArrayList<>();
             Map<Long, StockRecord> stockRecords = cartRecords.stream().collect(toMap(CartRecord::getCartRecordId, std -> std.getBook().getStockRecords().get(0)));
             for (CartRecord cartRecord : cartRecords) {
                 StockRecord stockRecord = stockRecords.get(cartRecord.getCartRecordId());
-                final int quantity = itemsMap.get(cartRecord.getCartRecordId()).getQuantity();
-                stockRecord.setQuantity(stockRecord.getQuantity() - quantity);
+                final int orderedQuantity = itemsMap.get(cartRecord.getCartRecordId()).getQuantity();//per item
+                stockRecord.setQuantity(stockRecord.getQuantity() - orderedQuantity);
                 OrderRecord orderRecord = new OrderRecord();
-                while (retry) {
+                boolean retry = true;
+                do {
                     try {
                         stockRecordRepository.saveAndFlush(stockRecord);
+                        retry = false;
                     } catch (OptimisticLockException e) {
                         e.printStackTrace();
                         Optional<StockRecord> stockRecordOptional = stockRecordRepository.findStockRecordByStockRecordId(stockRecord.getStockRecordId());
-                        if (stockRecordOptional.isEmpty() || stockRecordOptional.get().getQuantity() < quantity) {
+                        //recheck new stockRecord entity instance;
+                        if (stockRecordOptional.isEmpty() || stockRecordOptional.get().getQuantity() < orderedQuantity) {
                             throw new DataMismatchException("Some items have changed!");
                         }
-                        stockRecords.put(stockRecord.getStockRecordId(), stockRecord);
+                        //update new instance of StockRecord;
+                        StockRecord newStockRecord = stockRecordOptional.get();
+                        newStockRecord.setQuantity(newStockRecord.getQuantity() - orderedQuantity);
+                        stockRecords.put(stockRecord.getStockRecordId(), newStockRecord);
                     }
-                    orderRecord.setOrderInformation(orderInformation);
-                    orderRecord.setQuantity(quantity);
-                    orderRecord.setBook(stockRecord.getBook());
-                    orderRecord.setPrice(stockRecord.getBook().getPrice());
-                    orderRecordRepository.saveAndFlush(orderRecord);
-                    orderRecords.add(orderRecord);
-                    retry = false;
-                }
-                retry = true;
-                orderRecords.add(orderRecord);
+                    //still true, retry the operation with new stock record
+                } while (retry);
+                //after the save operation, save orderRecord;
+                orderRecord.setOrderInformation(orderInformation);
+                orderRecord.setQuantity(orderedQuantity);
+                orderRecord.setStockRecord(stockRecord);
+                orderRecord.setBook(stockRecord.getBook());
+                orderRecord.setPrice(stockRecord.getBook().getPrice());
+                orderRecordRepository.saveAndFlush(orderRecord);
             }
-
+            //after saving all items in order, delete all in cart;
             cartRecordRepository.deleteAll(cartRecords);
-            result.put("items", items);
+            //create redirect link to pay;
             if (vnp_BankCode != null) {
                 String vnp_Amount = String.valueOf((int) (doubleTotal * 25000));
                 String redirect = paymentService.createRedirectUrl(vnp_Amount, vnp_BankCode);
@@ -203,40 +201,41 @@ public class OrderService {
         }
     }
 
-    public List<OrderInformationDTO> getOrders(UserDetails userDetails) {
+    public List<OrderInformationDTO> getOrders(UserPrincipal userDetails) {
         List<OrderInformation> orders = orderInformationRepository.findOrderInformationByUserId(userDetails.getUserId());
         return orders.stream().map(OrderInformationDTO::convertFromEntity).toList();
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public void clearPendingOrders() {
-        List<OrderInformation> orderInformation = orderInformationRepository.findAll();
+    public void cancelPendingOrders() {
+        List<OrderInformation> orderInformation = orderInformationRepository.findAllOrderInformationByOrderStatus(OrderStatus.PENDING);
         for (OrderInformation order : orderInformation) {
-            if (order.getOrderStatus() == OrderStatus.PENDING) {
-                LocalDateTime createdAt = order.getCreatedAt();
-                if (createdAt.isBefore(LocalDateTime.now().minusMinutes(1))) {
-                    List<OrderRecord> orderRecords = order.getOrderRecords();
-                    for (OrderRecord orderRecord : orderRecords) {
-                        boolean retry = true;
-                        while (retry) {
-                            try {
-                                StockRecord stockRecord = orderRecord.getBook().getStockRecords().get(0);
-                                stockRecord.setQuantity(orderRecord.getQuantity() + stockRecord.getQuantity());
-                                stockRecordRepository.saveAndFlush(stockRecord);
-                                retry = false;
-                            } catch (OptimisticLockException ignored) {
+            LocalDateTime createdAt = order.getCreatedAt();
+            LocalDateTime threshold = LocalDateTime.now().minusSeconds(20);
+            if (createdAt.isBefore(threshold)) {
+                List<OrderRecord> orderRecords = order.getOrderRecords();
 
-                            }
+                for (OrderRecord orderRecord : orderRecords) {
+                    boolean retry = true;
+                    do {
+                        try {
+                            //Ensure the item's stock is returned to the location where it was bought
+                            StockRecord stockRecord = orderRecord.getStockRecord();
+                            stockRecord.setQuantity(stockRecord.getQuantity() + orderRecord.getQuantity());
+                            stockRecordRepository.saveAndFlush(stockRecord);
+                            retry = false;
+                        } catch (OptimisticLockException ignored) {
+
                         }
-                    }
-                    order.setOrderStatus(OrderStatus.CANCELLED);
-                    orderInformationRepository.saveAndFlush(order);
+                    } while (retry);
                 }
+                order.setOrderStatus(OrderStatus.CANCELLED);
+                orderInformationRepository.saveAndFlush(order);
             }
         }
     }
 
-    public OrderInformationDTO getOrder(UserDetails userDetails, Long orderInformationId) {
+    public OrderInformationDTO getOrder(UserPrincipal userDetails, Long orderInformationId) {
         Optional<OrderInformation> orderInformation = orderInformationRepository.findOrderInformationByOrderInformationId(orderInformationId);
         if (orderInformation.isPresent()) {
             OrderInformation order = orderInformation.get();

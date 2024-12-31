@@ -1,6 +1,6 @@
 package com.project.bookseller.service.user;
 
-import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.CartRecordDTO;
 import com.project.bookseller.entity.book.Book;
 import com.project.bookseller.entity.location.StockRecord;
@@ -24,7 +24,7 @@ public class CartService {
     private final CartRecordRepository cartRecordRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void addToCart(UserDetails userDetails, Long bookId, Integer quantity) throws ResourceNotFoundException, NotEnoughStockException {
+    public void addToCart(UserPrincipal userDetails, Long bookId, Integer quantity) throws ResourceNotFoundException, NotEnoughStockException {
         Optional<Book> optionalBook = bookRepository.findBriefBookByBookId(bookId);
 
         //book must exist!!!
@@ -58,7 +58,7 @@ public class CartService {
         }
     }
 
-    public List<CartRecordDTO> getCart(UserDetails userDetails) {
+    public List<CartRecordDTO> getCart(UserPrincipal userDetails) {
         /*
         shared findCartRecordsWithStock(Long userId, List<Long> cartRecordIds)
          method takes an array of id as parameters(get all, get checked items to check out,
@@ -75,7 +75,7 @@ public class CartService {
 
     //transactional, delete if all records are from the same user. If not, roll back the transaction.
     @Transactional(propagation = Propagation.REQUIRED, rollbackFor = ResourceNotFoundException.class)
-    public void deleteFromCart(UserDetails userDetails, List<Long> cartRecordIds) throws ResourceNotFoundException {
+    public void deleteFromCart(UserPrincipal userDetails, List<Long> cartRecordIds) throws ResourceNotFoundException {
         List<CartRecord> cartRecords = recordRepository.findCartRecordsWithStock(userDetails.getUser().getUserId(), cartRecordIds);
         for (CartRecord cartRecord : cartRecords) {
             if (cartRecord.getUser().getUserId() == userDetails.getUser().getUserId()) {
@@ -88,7 +88,7 @@ public class CartService {
 
     @Transactional
     ///increase, decrease
-    public CartRecordDTO updateCart(UserDetails userDetails, Long cartRecordId, Integer quantity) throws ResourceNotFoundException, NotEnoughStockException {
+    public CartRecordDTO updateCart(UserPrincipal userDetails, Long cartRecordId, Integer quantity) throws ResourceNotFoundException, NotEnoughStockException {
         List<CartRecord> cartRecords = recordRepository.findCartRecordsWithStock(userDetails.getUser().getUserId(), Collections.singletonList(cartRecordId));
        /*
        for higher reusability of the method findCartRecordsWithStock, which takes a List<> and returns a List<>,
@@ -113,7 +113,7 @@ public class CartService {
     }
 
     //pre-check checked items to check out
-    public List<CartRecordDTO> getCheckedItems(UserDetails userDetails, List<CartRecordDTO> cartRecordDTOS) {
+    public List<CartRecordDTO> getCheckedItems(UserPrincipal userDetails, List<CartRecordDTO> cartRecordDTOS) {
         List<CartRecord> cartRecords = cartRecordRepository.findCartRecordsWithStock(userDetails.getUser().getUserId(), cartRecordDTOS.stream().map(CartRecordDTO::getId).toList());
         //some items in the data have been deleted. throw an error
         if (cartRecords.size() != cartRecordDTOS.size()) {

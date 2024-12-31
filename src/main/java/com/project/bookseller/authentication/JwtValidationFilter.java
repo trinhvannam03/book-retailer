@@ -36,10 +36,12 @@ public class JwtValidationFilter extends OncePerRequestFilter {
         try {
             if (token != null) {
                 Claims claims = jwtService.extractClaims(token);
-                UserDetails userDetails = jwtService.validateAccessToken(token);
-                JwtAuthenticationToken authentication = new JwtAuthenticationToken(userDetails);
+                System.out.println("UserId: " + claims.getSubject());
+                System.out.println("SessionId: " + claims.getAudience());
+                UserPrincipal userDetails = jwtService.validateAccessToken(token);
                 Session session = sessionService.getSession(userDetails.getUserId(), claims.getAudience());
                 if (session != null && session.getSessionStatus() == SessionStatus.ACTIVE) {
+                    JwtAuthenticationToken authentication = new JwtAuthenticationToken(userDetails);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }

@@ -1,6 +1,6 @@
 package com.project.bookseller.controller;
 
-import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.auth.AuthDTO;
 import com.project.bookseller.dto.auth.RegisterDTO;
 import com.project.bookseller.dto.UserDTO;
@@ -10,7 +10,7 @@ import com.project.bookseller.exceptions.PassWordNotMatch;
 import com.project.bookseller.repository.UserRepository;
 import com.project.bookseller.service.auth.SessionService;
 import com.project.bookseller.service.auth.TokenService;
-import com.project.bookseller.service.auth.UserDetailsService;
+import com.project.bookseller.service.auth.UserPrincipalService;
 import com.project.bookseller.service.user.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
     private final PasswordEncoder passwordEncoder;
-    private final UserDetailsService userDetailsService;
+    private final UserPrincipalService userDetailsService;
     private final TokenService jwtService;
     private final UserService userService;
     private final UserRepository userRepository;
@@ -78,10 +78,18 @@ public class AuthController {
 
     //logout, set INACTIVE session
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(@AuthenticationPrincipal UserDetails userDetails, @RequestBody Session session) {
+    public ResponseEntity<Map<String, String>> logout(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody Session session) {
         Map<String, String> map = userService.logout(userDetails, session);
         return new ResponseEntity<>(map, HttpStatus.OK);
     }
 
-
+    @PostMapping("/oauth2")
+    public ResponseEntity<UserDTO> oauth2(@RequestBody Map<String, String> payload) throws InvalidTokenException {
+        if (payload == null || payload.get("code").isBlank()) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        String code = payload.get("code");
+        UserDTO userDTO = userService.oauth2Login(code);
+        return new ResponseEntity<>(userDTO, HttpStatus.OK);
+    }
 }

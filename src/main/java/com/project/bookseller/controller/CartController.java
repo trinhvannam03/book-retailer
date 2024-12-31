@@ -1,6 +1,6 @@
 package com.project.bookseller.controller;
 
-import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.CartRecordDTO;
 import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
@@ -24,7 +24,7 @@ public class CartController {
     //add to cart
     @PostMapping("/")
     @PreAuthorize("isAuthenticated()")
-    ResponseEntity<List<CartRecordDTO>> addToCart(@AuthenticationPrincipal UserDetails userDetails, @RequestBody Map<String, Object> requestData) {
+    ResponseEntity<List<CartRecordDTO>> addToCart(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody Map<String, Object> requestData) {
         try {
             cartService.addToCart(userDetails, ((Integer) requestData.get("book_id")).longValue(), (Integer) requestData.get("quantity"));
             List<CartRecordDTO> cartRecords = cartService.getCart(userDetails);
@@ -41,13 +41,13 @@ public class CartController {
     //get items in cart
     @GetMapping("/")
     @PreAuthorize("isAuthenticated()")
-    ResponseEntity<List<CartRecordDTO>> getCart(@AuthenticationPrincipal UserDetails userDetails) {
+    ResponseEntity<List<CartRecordDTO>> getCart(@AuthenticationPrincipal UserPrincipal userDetails) {
         return new ResponseEntity<>(cartService.getCart(userDetails), HttpStatusCode.valueOf(200));
     }
 
     //delete from cart
     @PostMapping("/delete")
-    ResponseEntity<List<CartRecordDTO>> deleteFromCart(@AuthenticationPrincipal UserDetails userDetails, @RequestBody List<Long> cartRecordIds) {
+    ResponseEntity<List<CartRecordDTO>> deleteFromCart(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody List<Long> cartRecordIds) {
         try {
             cartService.deleteFromCart(userDetails, cartRecordIds);
         } catch (ResourceNotFoundException e) {
@@ -59,7 +59,7 @@ public class CartController {
 
     //update quantity in cart
     @PutMapping("/update")
-    ResponseEntity<CartRecordDTO> updateCart(@AuthenticationPrincipal UserDetails userDetails, @RequestBody CartRecordDTO cartRecordDTO) {
+    ResponseEntity<CartRecordDTO> updateCart(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody CartRecordDTO cartRecordDTO) {
         Long cartRecordId = cartRecordDTO.getId();
         Integer quantity = cartRecordDTO.getQuantity();
         try {
@@ -72,7 +72,7 @@ public class CartController {
     }
     //check and return checked items when accessing checkout page.
     @PostMapping("/checked-items")
-    ResponseEntity<List<CartRecordDTO>> getCheckedItems(@AuthenticationPrincipal UserDetails userDetails, @RequestBody List<CartRecordDTO> cartRecordDTOs) {
+    ResponseEntity<List<CartRecordDTO>> getCheckedItems(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody List<CartRecordDTO> cartRecordDTOs) {
         try {
             List<CartRecordDTO> cartRecords = cartService.getCheckedItems(userDetails, cartRecordDTOs);
             return ResponseEntity.ok(cartRecords);

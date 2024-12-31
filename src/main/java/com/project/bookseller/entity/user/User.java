@@ -22,9 +22,11 @@ public class User {
     private String phone;
     private String fullName;
     private String profilePicture;
-
+    @Column(unique = true, name = "oauth2_id")
+    private String oauth2Id;
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM(\"PLATINUM\", \"SILVER\", \"DIAMOND\", \"BRONZE\")")
+
     private UserTier userTier;
 
     @Enumerated(EnumType.STRING)
@@ -51,6 +53,7 @@ public class User {
     private Gender gender;
     @Temporal(TemporalType.DATE) // Maps to SQL DATE (ignores time part)
     private Date dateOfBirth;
+
 
     @PrePersist
     protected void onCreate() {

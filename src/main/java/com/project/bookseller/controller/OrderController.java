@@ -1,6 +1,6 @@
 package com.project.bookseller.controller;
 
-import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.order.OrderInformationDTO;
 import com.project.bookseller.exceptions.DataMismatchException;
 import com.project.bookseller.exceptions.NotEnoughStockException;
@@ -29,7 +29,7 @@ public class OrderController {
     //create order
     @PostMapping("/")
     @PreAuthorize("isAuthenticated()")
-    ResponseEntity<Map<String, Object>> createOrder(@RequestBody OrderInformationDTO info, @AuthenticationPrincipal UserDetails userDetails) {
+    ResponseEntity<Map<String, Object>> createOrder(@RequestBody OrderInformationDTO info, @AuthenticationPrincipal UserPrincipal userDetails) {
         try {
             Map<String, Object> response = orderService.createOrder(userDetails, info);
             return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
@@ -42,7 +42,7 @@ public class OrderController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/")
-    ResponseEntity<List<OrderInformationDTO>> getOrders(@AuthenticationPrincipal UserDetails userDetails) {
+    ResponseEntity<List<OrderInformationDTO>> getOrders(@AuthenticationPrincipal UserPrincipal userDetails) {
         if (userDetails == null) {
             return ResponseEntity.badRequest().build();
         }
@@ -52,7 +52,7 @@ public class OrderController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{orderId}")
-    ResponseEntity<OrderInformationDTO> getOrder(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long orderId) {
+    ResponseEntity<OrderInformationDTO> getOrder(@AuthenticationPrincipal UserPrincipal userDetails, @PathVariable Long orderId) {
         if (orderId == null) {
             return ResponseEntity.badRequest().build();
         }

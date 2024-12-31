@@ -1,7 +1,7 @@
 package com.project.bookseller.service.auth;
 
 
-import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.entity.user.Session;
 import com.project.bookseller.exceptions.InvalidTokenException;
 import io.jsonwebtoken.*;
@@ -23,9 +23,9 @@ public class TokenService {
     //use ENV VARIABLES instead
     private static final int accessTokenExpiredAfter = 1000 * 60 * 15; //5 MINUTES
     private static final int refreshTokenExpiredAfter = 1000 * 60 * 2880;
-    private final UserDetailsService userDetailsService;
+    private final UserPrincipalService userDetailsService;
 
-    public String generateAccessToken(UserDetails userDetails, String sessionId) {
+    public String generateAccessToken(UserPrincipal userDetails, String sessionId) {
         return Jwts.builder().setSubject(userDetails.getEmail())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiredAfter))
@@ -34,7 +34,7 @@ public class TokenService {
                 .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY)), SignatureAlgorithm.HS256).compact();
     }
 
-    public String generateRefreshToken(UserDetails userDetails, String sessionId) {
+    public String generateRefreshToken(UserPrincipal userDetails, String sessionId) {
         Map<String, String> claims = new HashMap<>();
         claims.put("sessionId", sessionId);
         return Jwts.builder().setSubject(userDetails.getEmail())
@@ -54,12 +54,12 @@ public class TokenService {
         }
     }
 
-    public UserDetails validateAccessToken(String accessToken) throws ExpiredJwtException, InvalidTokenException {
+    public UserPrincipal validateAccessToken(String accessToken) throws ExpiredJwtException, InvalidTokenException {
         try {
             Claims claims = extractClaims(accessToken);
             String identifier = claims.getSubject();
             String issuer = claims.getIssuer();
-            UserDetails userDetails = userDetailsService.loadUserByIdentifier(identifier);
+            UserPrincipal userDetails = userDetailsService.loadUserByIdentifier(identifier);
             if (userDetails != null && issuer.equals(ISSUER_ID)) {
                 return userDetails;
             }
@@ -73,7 +73,7 @@ public class TokenService {
         try {
             Claims claims = extractClaims(refreshToken);
             String identifier = claims.getSubject();
-            UserDetails userDetails = userDetailsService.loadUserByIdentifier(identifier);
+            UserPrincipal userDetails = userDetailsService.loadUserByIdentifier(identifier);
             Map<String, String> map = new HashMap<>();
             if (userDetails != null && claims.getExpiration().after(new Date())) {
                 map.put("accessToken", generateAccessToken(userDetails, session.getSessionId()));

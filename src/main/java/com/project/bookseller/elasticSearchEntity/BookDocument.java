@@ -12,6 +12,8 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,6 +50,8 @@ public class BookDocument implements Serializable {
 
     @Field(type = FieldType.Nested)
     private List<CategoryDocument> categories = new ArrayList<>();
+
+    private LocalDateTime publication_date;
 
     public static BookDocument convertFromDTO(BookDTO bookDTO) {
         BookDocument bookDocument = new BookDocument();

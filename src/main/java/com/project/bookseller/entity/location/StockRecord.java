@@ -1,10 +1,13 @@
 package com.project.bookseller.entity.location;
 
 import com.project.bookseller.entity.book.Book;
+import com.project.bookseller.entity.order.OrderRecord;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -23,6 +26,8 @@ public class StockRecord {
     @JoinColumn(name = "book_id")
     private Book book;
 
+    @OneToMany(mappedBy = "stockRecord")
+    private List<OrderRecord> orderRecords = new ArrayList<>();
     @Version
     private Long version;
 
@@ -38,4 +43,6 @@ public class StockRecord {
     public int hashCode() {
         return Objects.hashCode(getStockRecordId());
     }
+
+
 }

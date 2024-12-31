@@ -25,7 +25,9 @@ public class UserDTO implements Serializable {
     private Gender gender;
     private Date dateOfBirth;
     private String accessToken;
+    private String oauth2Id;
     private String refreshToken;
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     Set<Session> sessions = new HashSet<>();
     private Session session;
 

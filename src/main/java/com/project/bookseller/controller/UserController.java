@@ -1,8 +1,7 @@
 package com.project.bookseller.controller;
 
-import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.auth.AuthDTO;
-import com.project.bookseller.dto.order.OrderInformationDTO;
 import com.project.bookseller.dto.address.UserAddressDTO;
 import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.entity.user.Session;
@@ -31,7 +30,7 @@ public class UserController {
     //get addresses
     @GetMapping("/address")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<UserAddressDTO>> getUserAddresses(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<UserAddressDTO>> getUserAddresses(@AuthenticationPrincipal UserPrincipal userDetails) {
         List<UserAddressDTO> userAddressDTOs = userService.findUserAddresses(userDetails);
         return new ResponseEntity<>(userAddressDTOs, HttpStatusCode.valueOf(200));
     }
@@ -39,7 +38,7 @@ public class UserController {
     //get basic info
     @PreAuthorize("hasRole('ROLE_USER') and isAuthenticated()")
     @GetMapping("/profile")
-    ResponseEntity<UserDTO> getUserProfile(@AuthenticationPrincipal UserDetails userDetails) {
+    ResponseEntity<UserDTO> getUserProfile(@AuthenticationPrincipal UserPrincipal userDetails) {
         if (userDetails == null) {
             return ResponseEntity.badRequest().build();
         }
@@ -49,7 +48,7 @@ public class UserController {
 
     @PreAuthorize("isAuthenticated() and hasRole('ROLE_USER')")
     @PutMapping("/profile")
-    ResponseEntity<UserDTO> updateUserProfile(@AuthenticationPrincipal UserDetails userDetails, @RequestBody UserDTO userDTO) {
+    ResponseEntity<UserDTO> updateUserProfile(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody UserDTO userDTO) {
         UserDTO userDTOUpdated = userService.updateUserProfile(userDetails, userDTO);
         return new ResponseEntity<>(userDTOUpdated, HttpStatusCode.valueOf(200));
     }
@@ -57,7 +56,7 @@ public class UserController {
 
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/password")
-    ResponseEntity<Map<String, Object>> changePassword(@AuthenticationPrincipal UserDetails userDetails, @RequestBody AuthDTO credentials) {
+    ResponseEntity<Map<String, Object>> changePassword(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody AuthDTO credentials) {
         try {
             Map<String, Object> result = userService.changePassword(userDetails, credentials);
             return new ResponseEntity<>(result, HttpStatusCode.valueOf(200));
@@ -68,7 +67,7 @@ public class UserController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/sessions")
-    ResponseEntity<Set<Session>> getUserSessions(@AuthenticationPrincipal UserDetails userDetails) {
+    ResponseEntity<Set<Session>> getUserSessions(@AuthenticationPrincipal UserPrincipal userDetails) {
         if (userDetails == null) {
             return ResponseEntity.badRequest().build();
         }
@@ -78,7 +77,7 @@ public class UserController {
 
     @PostMapping("/address")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UserAddressDTO> createUserAddress(@RequestBody UserAddressDTO userAddressDTO, @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<UserAddressDTO> createUserAddress(@RequestBody UserAddressDTO userAddressDTO, @AuthenticationPrincipal UserPrincipal userDetails) {
         UserAddressDTO userAddressDTOs = userService.createAddress(userDetails, userAddressDTO);
         return new ResponseEntity<>(userAddressDTOs, HttpStatusCode.valueOf(200));
     }

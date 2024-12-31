@@ -1,6 +1,6 @@
 package com.project.bookseller.service.auth;
 
-import com.project.bookseller.authentication.UserDetails;
+import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.entity.user.User;
 import com.project.bookseller.repository.UserRepository;
 import com.project.bookseller.validation.IdentifierTypeValidator;
@@ -12,10 +12,10 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class UserDetailsService {
+public class UserPrincipalService {
     private final UserRepository userRepository;
 
-    public UserDetails loadUserByIdentifier(String identifier) {
+    public UserPrincipal loadUserByIdentifier(String identifier) {
         if (identifier == null || identifier.isEmpty()) {
             return null;
         }
@@ -28,7 +28,7 @@ public class UserDetailsService {
         } else {
             optionalUser = userRepository.findUserByEmail(identifier);
         }
-        return optionalUser.map(UserDetails::new).orElse(null);
+        return optionalUser.map(UserPrincipal::new).orElse(null);
     }
 
 }

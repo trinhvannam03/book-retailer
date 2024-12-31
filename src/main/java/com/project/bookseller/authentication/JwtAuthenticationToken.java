@@ -5,7 +5,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collection;
-import java.util.List;
 
 @Data
 public class JwtAuthenticationToken implements Authentication {
@@ -17,7 +16,7 @@ public class JwtAuthenticationToken implements Authentication {
 
     public JwtAuthenticationToken(Object principal) {
         this.principal = principal;
-        this.authorities = ((UserDetails) principal).getAuthorities();
+        this.authorities = ((UserPrincipal) principal).getAuthorities();
         setAuthenticated(true);
     }
 
@@ -37,7 +36,7 @@ public class JwtAuthenticationToken implements Authentication {
 
     @Override
     public Object getDetails() {
-        return ((UserDetails) principal).getEmail();
+        return ((UserPrincipal) principal).getEmail();
     }
 
     @Override

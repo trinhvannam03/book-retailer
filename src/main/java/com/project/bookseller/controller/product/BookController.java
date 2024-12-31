@@ -16,9 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/books/")
@@ -65,18 +63,28 @@ public class BookController {
             bookDocument.setPrice(book.getPrice());
             bookDocument.setPublisher(book.getPublisher());
             bookDocument.setBook_cover(book.getBookCover());
+            bookDocument.setPublication_date(book.getPublicationDate());
             bookDocument.setIsbn(book.getIsbn());
-            bookDocument.setAuthors(book.getAuthors().stream().map(AuthorDocument::convertFromEntity).toList());
-            bookDocument.setCategories(book.getCategories().stream().map(CategoryDocument::convertFromEntity).toList());
+            bookDocument.setAuthors(book.getAuthors().stream()
+                    .map(AuthorDocument::convertFromEntity).toList());
+            bookDocument.setCategories(book.getCategories().stream()
+                    .map(CategoryDocument::convertFromEntity).toList());
             bookDocumentService.indexBookDocument(bookDocument);
         }
         return ResponseEntity.ok(null);
     }
 
     @GetMapping("search")
-    public ResponseEntity<List<BookDocument>> searchByKeyword(@RequestParam String keyword) {
+    public ResponseEntity<List<BookDocument>> searchByKeyword(
+            @RequestParam String keyword,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) String sort_by,
+            @RequestParam(required = false) String filter) {
+        int currentPage = (page == null || page <= 0) ? 0 : page - 1;
+        String fil = (filter == null || filter.isBlank()) ? null : filter;
         try {
-            List<BookDocument> books = bookDocumentService.searchByKeyword(keyword);
+            List<BookDocument> books = bookDocumentService
+                    .searchByKeyword(keyword, currentPage, sort_by, fil);
             return ResponseEntity.ok(books);
         } catch (Exception e) {
             e.printStackTrace();

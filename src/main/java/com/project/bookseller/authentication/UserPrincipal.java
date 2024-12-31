@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-public class UserDetails {
+public class UserPrincipal {
     private User user;
     public Long getUserId() {
         return user.getUserId();
@@ -40,7 +40,7 @@ public class UserDetails {
 
     private List<? extends GrantedAuthority> authorities;
 
-    public UserDetails(User user) {
+    public UserPrincipal(User user) {
         this.user = user;
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRoleName()));
