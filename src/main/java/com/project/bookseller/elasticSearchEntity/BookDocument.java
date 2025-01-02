@@ -6,6 +6,7 @@ import com.project.bookseller.entity.book.Book;
 import com.project.bookseller.entity.book.Category;
 import jakarta.persistence.Id;
 import lombok.Data;
+import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
@@ -15,6 +16,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Document(indexName = "books")
@@ -50,8 +52,9 @@ public class BookDocument implements Serializable {
 
     @Field(type = FieldType.Nested)
     private List<CategoryDocument> categories = new ArrayList<>();
-
-    private LocalDateTime publication_date;
+//
+//    @Field(type = FieldType.Date, format = DateFormat.date_time)
+//    private Date publication_date;
 
     public static BookDocument convertFromDTO(BookDTO bookDTO) {
         BookDocument bookDocument = new BookDocument();
@@ -62,11 +65,8 @@ public class BookDocument implements Serializable {
         bookDocument.setPages(bookDTO.getPages());
         bookDocument.setPublisher(bookDTO.getPublisher());
         bookDocument.setIsbn(bookDTO.getIsbn());
+//        bookDocument.setPublication_date(bookDTO.getPublicationDate());
         return bookDocument;
     }
 
-    public static BookDocument convertFromEntity(Book book) {
-        BookDTO bookDTO = BookDTO.convertFromBook(book);
-        return BookDocument.convertFromDTO(bookDTO);
-    }
 }

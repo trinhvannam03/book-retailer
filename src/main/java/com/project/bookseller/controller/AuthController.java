@@ -1,25 +1,26 @@
 package com.project.bookseller.controller;
 
+import com.project.bookseller.authentication.AuthenticationResponseDTO;
 import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.auth.AuthDTO;
 import com.project.bookseller.dto.auth.RegisterDTO;
-import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.entity.user.Session;
+import com.project.bookseller.exceptions.BadCredentialsException;
 import com.project.bookseller.exceptions.InvalidTokenException;
 import com.project.bookseller.exceptions.PassWordNotMatch;
-import com.project.bookseller.repository.UserRepository;
-import com.project.bookseller.service.auth.SessionService;
+import com.project.bookseller.exceptions.UniqueColumnViolationException;
 import com.project.bookseller.service.auth.TokenService;
 import com.project.bookseller.service.auth.UserPrincipalService;
 import com.project.bookseller.service.user.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.apache.http.auth.InvalidCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,52 +29,56 @@ import java.util.Map;
 @RequestMapping("/auth/")
 @RequiredArgsConstructor
 public class AuthController {
-    private final PasswordEncoder passwordEncoder;
-    private final UserPrincipalService userDetailsService;
-    private final TokenService jwtService;
+    private final UserPrincipalService userPrincipalService;
+    private final TokenService tokenService;
     private final UserService userService;
-    private final UserRepository userRepository;
-    private final SessionService sessionService;
 
-    //check format validity asynchronously as user types in
-    @PostMapping("/validate")
-    public ResponseEntity<Map<String, Object>> realTimeValidation(@Valid @RequestBody(required = false) RegisterDTO info) {
+    @PostMapping("/validate_email")
+    public ResponseEntity<Map<String, Object>> validateEmail(@RequestBody(required = false) RegisterDTO info) {
+        String email = info.getEmail();
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "valid information!");
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        if (email != null && !email.isEmpty()) {
+            UserPrincipal userPrincipal = userPrincipalService.loadUserByIdentifier(email);
+            if (userPrincipal != null) {
+                response.put("email", "Email already exists!");
+            }
+        }
+        return ResponseEntity.ok(response);
     }
 
     //refresh token, create new tokens using sessionId, extend session
     @PostMapping("/refresh")
-    public ResponseEntity<Map<String, String>> refreshToken(@RequestBody UserDTO userDTO) {
-        String refreshToken = userDTO.getRefreshToken();
-        Map<String, String> response = new HashMap<>();
+    public ResponseEntity<AuthenticationResponseDTO> refreshToken(@RequestBody AuthenticationResponseDTO authenticationResponseDTO) throws InvalidTokenException {
+        String refreshToken = authenticationResponseDTO.getRefreshToken();
+        System.out.println(refreshToken);
         try {
-            Map<String, String> tokens = jwtService.validateRefreshToken(refreshToken, userDTO.getSession());
-            tokens.put("status", "successful");
-            return new ResponseEntity<>(tokens, HttpStatus.OK);
+            AuthenticationResponseDTO response = tokenService.refreshTokens(refreshToken, authenticationResponseDTO.getSession());
+            return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
-            response.put("error", e.getMessage());
-            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
         }
     }
 
     //login, create session
     @PostMapping("/login")
-    public ResponseEntity<UserDTO> login(@Valid @RequestBody AuthDTO info) throws InvalidTokenException {
+    public ResponseEntity<AuthenticationResponseDTO> login(@Valid @RequestBody AuthDTO info) throws InvalidTokenException {
         try {
-            UserDTO user = userService.login(info);
-            return new ResponseEntity<>(user, HttpStatus.OK);
-        } catch (InvalidCredentialsException e) {
+            AuthenticationResponseDTO authenticationResponseDTO = userService.login(info);
+            return new ResponseEntity<>(authenticationResponseDTO, HttpStatus.OK);
+        } catch (BadCredentialsException e) {
             throw new RuntimeException(e);
         }
     }
 
     //register
     @PostMapping("/register")
-    public ResponseEntity<UserDTO> register(@Valid @RequestBody RegisterDTO info) throws PassWordNotMatch {
-        UserDTO userDTO = userService.register(info);
-        return new ResponseEntity<>(userDTO, HttpStatus.OK);
+    public ResponseEntity<AuthenticationResponseDTO> register(@Valid @RequestBody RegisterDTO info) throws PassWordNotMatch {
+        try {
+            AuthenticationResponseDTO authenticationResponseDTO = userService.register(info);
+            return new ResponseEntity<>(authenticationResponseDTO, HttpStatus.OK);
+        } catch (UniqueColumnViolationException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).build();
+        }
     }
 
     //logout, set INACTIVE session
@@ -84,12 +89,12 @@ public class AuthController {
     }
 
     @PostMapping("/oauth2")
-    public ResponseEntity<UserDTO> oauth2(@RequestBody Map<String, String> payload) throws InvalidTokenException {
+    public ResponseEntity<AuthenticationResponseDTO> oauth2(@RequestBody Map<String, String> payload) throws InvalidTokenException {
         if (payload == null || payload.get("code").isBlank()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
         String code = payload.get("code");
-        UserDTO userDTO = userService.oauth2Login(code);
-        return new ResponseEntity<>(userDTO, HttpStatus.OK);
+        AuthenticationResponseDTO authenticationResponseDTO = userService.oauth2Login(code);
+        return new ResponseEntity<>(authenticationResponseDTO, HttpStatus.OK);
     }
 }

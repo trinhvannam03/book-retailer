@@ -2,6 +2,7 @@ package com.project.bookseller.controller.product;
 
 import com.project.bookseller.dto.book.AuthorDTO;
 import com.project.bookseller.dto.book.BookDTO;
+import com.project.bookseller.dto.book.CategoryDTO;
 import com.project.bookseller.elasticSearchEntity.AuthorDocument;
 import com.project.bookseller.elasticSearchEntity.BookDocument;
 import com.project.bookseller.elasticSearchEntity.CategoryDocument;
@@ -62,8 +63,8 @@ public class BookController {
             bookDocument.setPages(book.getPages());
             bookDocument.setPrice(book.getPrice());
             bookDocument.setPublisher(book.getPublisher());
+//            bookDocument.setPublication_date(book.getPublicationDate());
             bookDocument.setBook_cover(book.getBookCover());
-            bookDocument.setPublication_date(book.getPublicationDate());
             bookDocument.setIsbn(book.getIsbn());
             bookDocument.setAuthors(book.getAuthors().stream()
                     .map(AuthorDocument::convertFromEntity).toList());
@@ -79,12 +80,14 @@ public class BookController {
             @RequestParam String keyword,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) String sort_by,
-            @RequestParam(required = false) String filter) {
+            @RequestParam(required = false) List<String> categories,
+            @RequestParam(required = false) Double price_gte,
+            @RequestParam(required = false) Double price_lte) {
+
         int currentPage = (page == null || page <= 0) ? 0 : page - 1;
-        String fil = (filter == null || filter.isBlank()) ? null : filter;
         try {
             List<BookDocument> books = bookDocumentService
-                    .searchByKeyword(keyword, currentPage, sort_by, fil);
+                    .searchByKeyword(keyword, currentPage, sort_by, categories, price_gte, price_lte);
             return ResponseEntity.ok(books);
         } catch (Exception e) {
             e.printStackTrace();
@@ -106,5 +109,15 @@ public class BookController {
     public ResponseEntity<List<BookDocument>> getSimilarBooks(@RequestParam String id) throws IOException {
         BookDocument bookDocument = bookDocumentService.getBookDocument(id);
         return ResponseEntity.ok(bookDocumentService.getMoreLikeThis(bookDocument));
+    }
+
+    @GetMapping("categories")
+    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
+        try {
+            List<CategoryDTO> categories = bookService.findAllCategories();
+            return ResponseEntity.ok(categories);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatusCode.valueOf(500));
+        }
     }
 }

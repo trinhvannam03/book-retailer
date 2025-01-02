@@ -3,7 +3,7 @@ package com.project.bookseller.service;
 import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.address.CityDTO;
 import com.project.bookseller.dto.address.UserAddressDTO;
-import com.project.bookseller.dto.order.OrderInformationDTO;
+import com.project.bookseller.dto.order.OrderDTO;
 import com.project.bookseller.dto.order.OrderRecordDTO;
 import com.project.bookseller.dto.order.PaymentMethodDTO;
 import com.project.bookseller.entity.book.Book;
@@ -33,13 +33,12 @@ import static java.util.stream.Collectors.toMap;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
-    private final OrderInformationRepository orderInformationRepository;
+    private final OrderRepository orderRepository;
     private final UserAddressRepository userAddressRepository;
     private final CartRecordRepository cartRecordRepository;
     private final PaymentService paymentService;
     private final OrderRecordRepository orderRecordRepository;
     private final StockRecordRepository stockRecordRepository;
-    private final CityRepository cityRepository;
 
 
     //for demonstration purpose only
@@ -53,7 +52,7 @@ public class OrderService {
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = DataMismatchException.class)
-    public Map<String, Object> createOrder(UserPrincipal userDetails, OrderInformationDTO info) throws NotEnoughStockException, UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeyException {
+    public Map<String, Object> createOrder(UserPrincipal userDetails, OrderDTO info) throws NotEnoughStockException, UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeyException {
         Map<String, Object> result = new HashMap<>();
         UserAddressDTO userAddress = info.getAddress();
         CityDTO cityDTO = userAddress.getCity();
@@ -141,18 +140,18 @@ public class OrderService {
             validateItems = true;
         }
         if (validatePaymentMethod && validateItems && validateShippingFee && validateDiscount) {
-            OrderInformation orderInformation = new OrderInformation();
-            orderInformation.setOrderType(OrderType.ONLINE);
-            orderInformation.setUser(userDetails.getUser());
-            orderInformation.setOrderStatus(status);
-            orderInformation.setPaymentMethod(payment);
-            orderInformation.setCity(city);
-            orderInformation.setFullAddress(fullAddress);
-            orderInformation.setPhone(phone);
-            orderInformation.setFullName(fullName);
-            orderInformation.setTotal(doubleEstimatedTotal);
-            orderInformation.setDiscount(calculatedDiscount);
-            orderInformationRepository.save(orderInformation);
+            Order order = new Order();
+            order.setOrderType(OrderType.ONLINE);
+            order.setUser(userDetails.getUser());
+            order.setOrderStatus(status);
+            order.setPaymentMethod(payment);
+            order.setCity(city);
+            order.setFullAddress(fullAddress);
+            order.setPhone(phone);
+            order.setFullName(fullName);
+            order.setTotal(doubleEstimatedTotal);
+            order.setDiscount(calculatedDiscount);
+            orderRepository.save(order);
             Map<Long, StockRecord> stockRecords = cartRecords.stream().collect(toMap(CartRecord::getCartRecordId, std -> std.getBook().getStockRecords().get(0)));
             for (CartRecord cartRecord : cartRecords) {
                 StockRecord stockRecord = stockRecords.get(cartRecord.getCartRecordId());
@@ -178,8 +177,8 @@ public class OrderService {
                     }
                     //still true, retry the operation with new stock record
                 } while (retry);
-                //after the save operation, save orderRecord;
-                orderRecord.setOrderInformation(orderInformation);
+                //after successfully updating stock levels, save orderRecords and save the order;
+                orderRecord.setOrderInformation(order);
                 orderRecord.setQuantity(orderedQuantity);
                 orderRecord.setStockRecord(stockRecord);
                 orderRecord.setBook(stockRecord.getBook());
@@ -201,15 +200,43 @@ public class OrderService {
         }
     }
 
-    public List<OrderInformationDTO> getOrders(UserPrincipal userDetails) {
-        List<OrderInformation> orders = orderInformationRepository.findOrderInformationByUserId(userDetails.getUserId());
-        return orders.stream().map(OrderInformationDTO::convertFromEntity).toList();
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public OrderDTO cancelOrder(UserPrincipal userDetails, Long orderInformationId) {
+        Optional<Order> orderInformationOptional = orderRepository.findOrderWithStockByOrderInformationId(userDetails.getUserId(), orderInformationId);
+        if (orderInformationOptional.isPresent()) {
+            Order orderInformation = orderInformationOptional.get();
+            List<OrderRecord> orderRecords = orderInformation.getOrderRecords();
+            for (OrderRecord orderRecord : orderRecords) {
+                boolean retry = true;
+                StockRecord stockRecord = orderRecord.getStockRecord();
+                do {
+                    try {
+                        stockRecord.setQuantity(stockRecord.getQuantity() + orderRecord.getQuantity());
+                        stockRecordRepository.saveAndFlush(stockRecord);
+                        retry = false;
+                    } catch (OptimisticLockException ignored) {
+                    }
+                } while (retry);
+            }
+            orderRepository.saveAndFlush(orderInformation);
+            orderInformation.setOrderStatus(OrderStatus.CANCELLED);
+            return OrderDTO.convertFromEntity(orderInformation);
+
+        } else {
+            throw new ResourceNotFoundException("Order not found!");
+
+        }
+    }
+
+    public List<OrderDTO> getOrders(UserPrincipal userDetails) {
+        List<Order> orders = orderRepository.findOrdersByUserId(userDetails.getUserId());
+        return orders.stream().map(OrderDTO::convertFromEntity).toList();
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void cancelPendingOrders() {
-        List<OrderInformation> orderInformation = orderInformationRepository.findAllOrderInformationByOrderStatus(OrderStatus.PENDING);
-        for (OrderInformation order : orderInformation) {
+        List<Order> orderInformation = orderRepository.findAllOrderByOrderStatus(OrderStatus.PENDING);
+        for (Order order : orderInformation) {
             LocalDateTime createdAt = order.getCreatedAt();
             LocalDateTime threshold = LocalDateTime.now().minusSeconds(20);
             if (createdAt.isBefore(threshold)) {
@@ -230,17 +257,17 @@ public class OrderService {
                     } while (retry);
                 }
                 order.setOrderStatus(OrderStatus.CANCELLED);
-                orderInformationRepository.saveAndFlush(order);
+                orderRepository.saveAndFlush(order);
             }
         }
     }
 
-    public OrderInformationDTO getOrder(UserPrincipal userDetails, Long orderInformationId) {
-        Optional<OrderInformation> orderInformation = orderInformationRepository.findOrderInformationByOrderInformationId(orderInformationId);
+    public OrderDTO getOrder(UserPrincipal userDetails, Long orderInformationId) {
+        Optional<Order> orderInformation = orderRepository.findOrderByOrderInformationId(userDetails.getUserId(), orderInformationId);
         if (orderInformation.isPresent()) {
-            OrderInformation order = orderInformation.get();
+            Order order = orderInformation.get();
             if (Objects.equals(order.getUserId(), userDetails.getUserId())) {
-                OrderInformationDTO orderInformationDTO = OrderInformationDTO.convertFromEntity(order);
+                OrderDTO orderInformationDTO = OrderDTO.convertFromEntity(order);
                 for (OrderRecord orderRecord : order.getOrderRecords()) {
                     OrderRecordDTO orderRecordDTO = OrderRecordDTO.convertFromEntity(orderRecord);
                     orderInformationDTO.getItems().add(orderRecordDTO);

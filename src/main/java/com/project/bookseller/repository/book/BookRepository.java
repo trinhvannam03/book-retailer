@@ -17,7 +17,7 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     List<Book> findAllBooks();
 
     @Query("SELECT b from Book b JOIN FETCH b.stockRecords s where b.bookId = :bookId and s.location.locationType = 'ONLINE_STORE'")
-    Optional<Book> findBriefBookByBookId(Long bookId);
+    Optional<Book> findBriefBookByBookIdWithOnlineStoreStock(Long bookId);
 
 
     @Query("SELECT b FROM Book b " +

@@ -11,7 +11,8 @@ import java.util.List;
 
 @Entity
 @Data
-public class OrderInformation {
+@Table(name = "order_information")
+public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long orderInformationId;

@@ -3,14 +3,16 @@ package com.project.bookseller.service.user;
 import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.CartRecordDTO;
 import com.project.bookseller.entity.book.Book;
-import com.project.bookseller.entity.location.StockRecord;
 import com.project.bookseller.entity.user.CartRecord;
 import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.repository.CartRecordRepository;
 import com.project.bookseller.repository.book.BookRepository;
 import lombok.RequiredArgsConstructor;
+import org.aspectj.weaver.ast.Not;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,35 +25,34 @@ public class CartService {
     private final BookRepository bookRepository;
     private final CartRecordRepository cartRecordRepository;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void addToCart(UserPrincipal userDetails, Long bookId, Integer quantity) throws ResourceNotFoundException, NotEnoughStockException {
-        Optional<Book> optionalBook = bookRepository.findBriefBookByBookId(bookId);
 
-        //book must exist!!!
+    public void addToCart(UserPrincipal userDetails, Long bookId, Integer quantity) throws ResourceNotFoundException, NotEnoughStockException {
+        Optional<Book> optionalBook = bookRepository.findBriefBookByBookIdWithOnlineStoreStock(bookId);
         if (optionalBook.isPresent()) {
-            int stock = optionalBook.get().getStockRecords().stream().mapToInt(StockRecord::getQuantity).sum();
+            int stock = optionalBook.get().getStockRecords().get(0).getQuantity();
             CartRecord cartRecord = new CartRecord();
-            Optional<CartRecord> optionalCartRecord = recordRepository.findCartRecordByUser_UserIdAndBook_BookId(userDetails.getUser().getUserId(), bookId);
-            //whether the item is in user's cart or not?
-            //in case already in cart
-            if (optionalCartRecord.isPresent()) {
-                cartRecord = optionalCartRecord.get();
-                if (stock >= cartRecord.getQuantity() + quantity) {
-                    cartRecord.setQuantity(cartRecord.getQuantity() + quantity);
-                    recordRepository.save(cartRecord);
-                } else {
-                    throw new NotEnoughStockException("Not enough stock");
-                }
-                // if not yet in cart
-            } else {
+            try {
                 if (stock >= quantity) {
                     cartRecord.setQuantity(quantity);
                     cartRecord.setUser(userDetails.getUser());
                     cartRecord.setBook(optionalBook.get());
                     recordRepository.save(cartRecord);
                 } else {
-                    throw new NotEnoughStockException("Not enough stock");
+                    throw new NotEnoughStockException(NotEnoughStockException.NOT_ENOUGH_STOCK);
                 }
+            } catch (DataIntegrityViolationException e) {
+                Optional<CartRecord> optionalCartRecord = recordRepository.findCartRecordByUser_UserIdAndBook_BookId(userDetails.getUser().getUserId(), bookId);
+                assert optionalCartRecord.isPresent();
+                cartRecord = optionalCartRecord.get();
+                if (stock >= cartRecord.getQuantity() + quantity) {
+                    cartRecord.setQuantity(cartRecord.getQuantity() + quantity);
+                    recordRepository.saveAndFlush(cartRecord);
+                } else {
+                    throw new NotEnoughStockException(NotEnoughStockException.NOT_ENOUGH_STOCK);
+                }
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+                throw new ResourceNotFoundException("No book found!");
             }
         } else {
             throw new ResourceNotFoundException("No book found!");
@@ -81,7 +82,7 @@ public class CartService {
             if (cartRecord.getUser().getUserId() == userDetails.getUser().getUserId()) {
                 recordRepository.delete(cartRecord);
             } else {
-                throw new ResourceNotFoundException("No book found!");
+                throw new ResourceNotFoundException(ResourceNotFoundException.NO_SUCH_ITEM);
             }
         }
     }
@@ -106,10 +107,10 @@ public class CartService {
                 cartRecordDTO.getBook().setStock(cartRecord.getBook().getStockRecords().get(0).getQuantity());
                 return cartRecordDTO;
             }
-            throw new NotEnoughStockException("Not enough stock");
+            throw new NotEnoughStockException(NotEnoughStockException.NOT_ENOUGH_STOCK);
         }
         //
-        throw new ResourceNotFoundException("No such item in cart!");
+        throw new ResourceNotFoundException(ResourceNotFoundException.NO_SUCH_ITEM);
     }
 
     //pre-check checked items to check out

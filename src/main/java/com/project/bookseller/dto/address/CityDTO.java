@@ -8,7 +8,7 @@ public class CityDTO {
     private long id;
     private String name;
 
-    public static CityDTO convertFromCity(City city) {
+    public static CityDTO convertFromEntity(City city) {
         CityDTO cityDTO = new CityDTO();
         cityDTO.id = city.getCityId();
         cityDTO.name = city.getCityName();

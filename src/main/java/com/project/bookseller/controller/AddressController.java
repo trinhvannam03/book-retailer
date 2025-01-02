@@ -9,7 +9,6 @@ import com.project.bookseller.entity.user.address.State;
 import com.project.bookseller.repository.address.CityRepository;
 import com.project.bookseller.repository.address.CountryRepository;
 import com.project.bookseller.repository.address.StateRepository;
-import com.project.bookseller.repository.UserAddressRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +31,7 @@ public class AddressController {
         List<Country> countriesDTO = countryRepository.findAll();
         List<CountryDTO> countryDTOList = new ArrayList<>();
         for (Country country : countriesDTO) {
-            CountryDTO countryDTO = CountryDTO.convertFromCountry(country);
+            CountryDTO countryDTO = CountryDTO.convertFromEntity(country);
             countryDTOList.add(countryDTO);
         }
         return ResponseEntity.ok(countryDTOList);
@@ -54,7 +53,7 @@ public class AddressController {
         List<City> cities = cityRepository.findCitiesByState_StateId(state_id);
         List<CityDTO> cityDTOs = new ArrayList<>();
         for (City city : cities) {
-            CityDTO cityDTO = CityDTO.convertFromCity(city);
+            CityDTO cityDTO = CityDTO.convertFromEntity(city);
             cityDTOs.add(cityDTO);
         }
         return new ResponseEntity<>(cityDTOs, HttpStatusCode.valueOf(200));

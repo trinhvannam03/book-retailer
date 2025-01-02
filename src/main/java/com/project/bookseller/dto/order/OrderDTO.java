@@ -3,7 +3,7 @@ package com.project.bookseller.dto.order;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.project.bookseller.dto.address.UserAddressDTO;
-import com.project.bookseller.entity.order.OrderInformation;
+import com.project.bookseller.entity.order.Order;
 import com.project.bookseller.entity.order.OrderRecord;
 import com.project.bookseller.entity.order.OrderStatus;
 import com.project.bookseller.entity.order.PaymentMethod;
@@ -15,7 +15,7 @@ import java.util.List;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class OrderInformationDTO {
+public class OrderDTO {
     private Double estimatedShippingFee;
     private long orderInformationId;
     private Double estimatedDiscount;
@@ -35,21 +35,21 @@ public class OrderInformationDTO {
     private double discount = 0;
     private List<OrderRecordDTO> items = new ArrayList<>();
 
-    public static OrderInformationDTO convertFromEntity(OrderInformation orderInformation) {
-        OrderInformationDTO dto = new OrderInformationDTO();
-        dto.setOrderStatus(orderInformation.getOrderStatus());
-        dto.setDiscount(orderInformation.getDiscount());
-        dto.setOrderStatus(orderInformation.getOrderStatus());
-        dto.setCancelledAt(orderInformation.getCancelledAt());
-        dto.setCompletedAt(orderInformation.getCompletedAt());
-        dto.setCreatedAt(orderInformation.getCreatedAt());
-        dto.setTotal(orderInformation.getTotal());
-        dto.setOrderInformationId(orderInformation.getOrderInformationId());
-        dto.setPaymentMethod(orderInformation.getPaymentMethod());
+    public static OrderDTO convertFromEntity(Order order) {
+        OrderDTO dto = new OrderDTO();
+        dto.setOrderStatus(order.getOrderStatus());
+        dto.setDiscount(order.getDiscount());
+        dto.setOrderStatus(order.getOrderStatus());
+        dto.setCancelledAt(order.getCancelledAt());
+        dto.setCompletedAt(order.getCompletedAt());
+        dto.setCreatedAt(order.getCreatedAt());
+        dto.setTotal(order.getTotal());
+        dto.setOrderInformationId(order.getOrderInformationId());
+        dto.setPaymentMethod(order.getPaymentMethod());
         UserAddressDTO userAddressDTO = new UserAddressDTO();
-        userAddressDTO.setFullAddress(orderInformation.getFullAddress());
+        userAddressDTO.setFullAddress(order.getFullAddress());
         dto.setAddress(userAddressDTO);
-        for (OrderRecord orderRecord : orderInformation.getOrderRecords()) {
+        for (OrderRecord orderRecord : order.getOrderRecords()) {
             dto.getItems().add(OrderRecordDTO.convertFromEntity(orderRecord));
         }
         return dto;

@@ -13,7 +13,6 @@ public class Category {
     private long categoryId;
     private String categoryName;
     private String categoryDesc;
-    private long parentId;
     @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
     private List<Book> books;
 }

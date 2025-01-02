@@ -1,7 +1,7 @@
 package com.project.bookseller.controller;
 
 import com.project.bookseller.authentication.UserPrincipal;
-import com.project.bookseller.dto.order.OrderInformationDTO;
+import com.project.bookseller.dto.order.OrderDTO;
 import com.project.bookseller.exceptions.DataMismatchException;
 import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.service.OrderService;
@@ -29,7 +29,7 @@ public class OrderController {
     //create order
     @PostMapping("/")
     @PreAuthorize("isAuthenticated()")
-    ResponseEntity<Map<String, Object>> createOrder(@RequestBody OrderInformationDTO info, @AuthenticationPrincipal UserPrincipal userDetails) {
+    ResponseEntity<Map<String, Object>> createOrder(@RequestBody OrderDTO info, @AuthenticationPrincipal UserPrincipal userDetails) {
         try {
             Map<String, Object> response = orderService.createOrder(userDetails, info);
             return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
@@ -41,23 +41,31 @@ public class OrderController {
     }
 
     @PreAuthorize("isAuthenticated()")
+    @PutMapping("/{id}")
+    public ResponseEntity<OrderDTO> cancelOrder(@AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable long id) {
+        OrderDTO orderInformationDTO = orderService.cancelOrder(userPrincipal, id);
+        return ResponseEntity.ok(orderInformationDTO);
+    }
+
+
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/")
-    ResponseEntity<List<OrderInformationDTO>> getOrders(@AuthenticationPrincipal UserPrincipal userDetails) {
+    ResponseEntity<List<OrderDTO>> getOrders(@AuthenticationPrincipal UserPrincipal userDetails) {
         if (userDetails == null) {
             return ResponseEntity.badRequest().build();
         }
-        List<OrderInformationDTO> orders = orderService.getOrders(userDetails);
+        List<OrderDTO> orders = orderService.getOrders(userDetails);
         return new ResponseEntity<>(orders, HttpStatusCode.valueOf(200));
     }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{orderId}")
-    ResponseEntity<OrderInformationDTO> getOrder(@AuthenticationPrincipal UserPrincipal userDetails, @PathVariable Long orderId) {
+    ResponseEntity<OrderDTO> getOrder(@AuthenticationPrincipal UserPrincipal userDetails, @PathVariable Long orderId) {
         if (orderId == null) {
             return ResponseEntity.badRequest().build();
         }
         try {
-            OrderInformationDTO order = orderService.getOrder(userDetails, orderId);
+            OrderDTO order = orderService.getOrder(userDetails, orderId);
             return new ResponseEntity<>(order, HttpStatusCode.valueOf(200));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

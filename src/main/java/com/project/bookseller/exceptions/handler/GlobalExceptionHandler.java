@@ -1,5 +1,6 @@
-package com.project.bookseller.exceptions;
+package com.project.bookseller.exceptions.handler;
 
+import com.project.bookseller.exceptions.PassWordNotMatch;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -19,6 +20,13 @@ public class GlobalExceptionHandler {
         validException.getBindingResult().getFieldErrors().forEach(fieldError -> {
             errorMessages.put(fieldError.getField(), fieldError.getDefaultMessage());
         });
+        return new ResponseEntity<>(errorMessages, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({PassWordNotMatch.class})
+    public ResponseEntity<Map<String, Object>> handlePassWordNotMatchException(Exception e) {
+        Map<String, Object> errorMessages = new HashMap<>();
+        errorMessages.put("message", e.getMessage());
         return new ResponseEntity<>(errorMessages, HttpStatus.BAD_REQUEST);
     }
 }

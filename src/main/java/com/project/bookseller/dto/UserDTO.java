@@ -1,5 +1,6 @@
 package com.project.bookseller.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.project.bookseller.entity.user.UserRole;
 import com.project.bookseller.entity.user.UserTier;
@@ -24,11 +25,7 @@ public class UserDTO implements Serializable {
     private UserRole roleName;
     private Gender gender;
     private Date dateOfBirth;
-    private String accessToken;
     private String oauth2Id;
-    private String refreshToken;
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    Set<Session> sessions = new HashSet<>();
     private Session session;
 
     public static UserDTO convertFromEntity(User user) {

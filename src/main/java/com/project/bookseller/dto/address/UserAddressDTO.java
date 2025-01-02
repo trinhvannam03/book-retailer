@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL) // Exclude null fields from JSON
 public class UserAddressDTO {
-    private long id;
+    private Long id;
     private String detailedAddress;
     private CityDTO city;
     private String phone;
@@ -18,15 +18,15 @@ public class UserAddressDTO {
     private String longitude;
     private String latitude;
 
-    public static UserAddressDTO convertFromUserAddress(UserAddress userAddress) {
+    public static UserAddressDTO convertFromEntity(UserAddress userAddress) {
         UserAddressDTO userAddressDTO = new UserAddressDTO();
         userAddressDTO.setId(userAddress.getUserAddressId());
         userAddressDTO.setDetailedAddress(userAddress.getDetailedAddress());
-        userAddressDTO.setCity(CityDTO.convertFromCity(userAddress.getCity()));
+        userAddressDTO.setCity(CityDTO.convertFromEntity(userAddress.getCity()));
         userAddressDTO.setPhone(userAddress.getPhone());
         userAddressDTO.setFullName(userAddress.getFullName());
         userAddressDTO.setState(StateDTO.convertFromEntity(userAddress.getCity().getState()));
-        userAddressDTO.setCountry(CountryDTO.convertFromCountry(userAddress.getCity().getState().getCountry()));
+        userAddressDTO.setCountry(CountryDTO.convertFromEntity(userAddress.getCity().getState().getCountry()));
         userAddressDTO.setFullAddress(userAddress.getDetailedAddress() + ", " + userAddressDTO.getCity().getName() + ", " + userAddressDTO.getState().getName() + ", " + userAddressDTO.getCountry().getName());
         return userAddressDTO;
     }

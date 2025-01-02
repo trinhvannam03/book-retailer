@@ -24,7 +24,6 @@ public class BookService {
     private final CategoryRepository categoryRepository;
     private final BookRepository bookRepository;
 
-
     public BookDTO findCompleteBook(String isbn) throws ResourceNotFoundException {
         Optional<Book> optionalBook = bookRepository.findBookByIsbnWithStockRecordsAndLocationType(isbn, LocationType.ONLINE_STORE);
         if (optionalBook.isPresent()) {
@@ -51,5 +50,15 @@ public class BookService {
             }
         }
         throw new ResourceNotFoundException("Book not found!");
+    }
+
+    public List<CategoryDTO> findAllCategories() {
+        List<Category> categories = categoryRepository.findAll();
+        List<CategoryDTO> categoriesDTO = new ArrayList<>();
+        for (Category category : categories) {
+            CategoryDTO categoryDTO = CategoryDTO.convertFromCategory(category);
+            categoriesDTO.add(categoryDTO);
+        }
+        return categoriesDTO;
     }
 }

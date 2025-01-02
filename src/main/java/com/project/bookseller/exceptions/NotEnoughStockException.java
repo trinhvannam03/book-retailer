@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 @Data
 public class NotEnoughStockException extends Exception {
     private String message;
+    public static String NOT_ENOUGH_STOCK = "Not enough stock!";
 
     public NotEnoughStockException(String message) {
         super(message);

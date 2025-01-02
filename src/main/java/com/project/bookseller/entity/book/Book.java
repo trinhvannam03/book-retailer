@@ -8,6 +8,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Entity
@@ -26,7 +27,7 @@ public class Book {
     private Integer bookWeight;
     private String publisher;
     private Integer pages;
-    private LocalDateTime publicationDate;
+    private Date publicationDate;
     private Double price;
     private String coverType;
     @ManyToMany(fetch = FetchType.LAZY)

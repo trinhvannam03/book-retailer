@@ -5,9 +5,11 @@ import com.project.bookseller.service.auth.UserPrincipalService;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
-public class UniqueEmailValidator implements ConstraintValidator<UniqueIdentifier, String> {
+@Component
+public class UniqueIdentifierValidator implements ConstraintValidator<UniqueIdentifier, String> {
     private final UserPrincipalService userDetailsService;
 
     @Override

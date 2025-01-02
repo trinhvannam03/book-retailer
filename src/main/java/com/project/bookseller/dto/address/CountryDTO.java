@@ -8,7 +8,7 @@ public class CountryDTO {
     private long id;
     private String name;
 
-    public static CountryDTO convertFromCountry(Country country) {
+    public static CountryDTO convertFromEntity(Country country) {
         CountryDTO countryDTO = new CountryDTO();
         countryDTO.setId(country.getCountryId());
         countryDTO.setName(country.getCountryName());

@@ -1,6 +1,6 @@
 package com.project.bookseller.entity.user;
 
-import com.project.bookseller.entity.order.OrderInformation;
+import com.project.bookseller.entity.order.Order;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -26,33 +26,28 @@ public class User {
     private String oauth2Id;
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM(\"PLATINUM\", \"SILVER\", \"DIAMOND\", \"BRONZE\")")
-
     private UserTier userTier;
-
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM(\"SUSPENDED\", \"RESTRICTED\", \"ACTIVE\", \"DELETED\")")
     private AccountStatus accountStatus;
-
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM(\"USER\"")
     private UserRole roleName;
-
-
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-    List<CartRecord> cartRecords = new ArrayList<>();
-
-
-    @OneToMany(mappedBy = "user")
-    List<UserAddress> addresses = new ArrayList<>();
-
-    @OneToMany(mappedBy = "user")
-    List<OrderInformation> orderInformation = new ArrayList<>();
-
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM('MALE','FEMALE','OTHER')")
     private Gender gender;
     @Temporal(TemporalType.DATE) // Maps to SQL DATE (ignores time part)
     private Date dateOfBirth;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    List<CartRecord> cartRecords = new ArrayList<>();
+
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    List<UserAddress> addresses = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user")
+    List<Order> orders = new ArrayList<>();
 
 
     @PrePersist

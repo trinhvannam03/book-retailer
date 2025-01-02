@@ -1,5 +1,6 @@
 package com.project.bookseller.service.user;
 
+import com.project.bookseller.authentication.AuthenticationResponseDTO;
 import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.GoogleResponse;
 import com.project.bookseller.dto.UserDTO;
@@ -9,16 +10,16 @@ import com.project.bookseller.dto.auth.RegisterDTO;
 import com.project.bookseller.entity.user.Session;
 import com.project.bookseller.entity.user.User;
 import com.project.bookseller.entity.user.UserAddress;
+import com.project.bookseller.exceptions.BadCredentialsException;
 import com.project.bookseller.exceptions.PassWordNotMatch;
 import com.project.bookseller.exceptions.UniqueColumnViolationException;
-import com.project.bookseller.repository.OrderInformationRepository;
+import com.project.bookseller.repository.OrderRepository;
 import com.project.bookseller.repository.UserAddressRepository;
 import com.project.bookseller.repository.UserRepository;
 import com.project.bookseller.service.auth.SessionService;
 import com.project.bookseller.service.auth.TokenService;
 import com.project.bookseller.service.auth.UserPrincipalService;
 import lombok.RequiredArgsConstructor;
-import org.apache.http.auth.InvalidCredentialsException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,7 +38,7 @@ import java.util.*;
 public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
-    private final OrderInformationRepository orderInformationRepository;
+    private final OrderRepository orderInformationRepository;
     private final UserPrincipalService userPrincipalService;
     private final TokenService tokenService;
     private final SessionService sessionService;
@@ -51,7 +52,7 @@ public class UserService {
     private static final String CLIENT_ID = "315074024599-2ftepktk2pkjo21bikn8nj0nvav618tr.apps.googleusercontent.com";
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public UserDTO register(RegisterDTO info) throws PassWordNotMatch {
+    public AuthenticationResponseDTO register(RegisterDTO info) throws PassWordNotMatch {
         if (!info.getConfirmedPassword().equals(info.getPassword())) {
             throw new PassWordNotMatch("confirmedPassword", "Confirmed Password Must Match");
         }
@@ -64,72 +65,40 @@ public class UserService {
         } catch (DataIntegrityViolationException e) {
             throw new UniqueColumnViolationException(UniqueColumnViolationException.EMAIL_ALREADY_EXISTS);
         }
-        return UserDTO.convertFromEntity(user);
+        AuthenticationResponseDTO authenticationResponseDTO = new AuthenticationResponseDTO();
+        UserPrincipal userPrincipal = new UserPrincipal(user);
+        Session session = sessionService.createSession(user);
+        String accessToken = tokenService.generateAccessToken(userPrincipal, session.getSessionId());
+        String refreshToken = tokenService.generateRefreshToken(userPrincipal, session.getSessionId());
+        authenticationResponseDTO.setAccessToken(accessToken);
+        authenticationResponseDTO.setRefreshToken(refreshToken);
+        authenticationResponseDTO.setSession(session);
+        return authenticationResponseDTO;
     }
 
-    public Map<String, String> logout(UserPrincipal userDetails, Session session) {
-        sessionService.deleteSession(userDetails.getUserId(), session);
-        Map<String, String> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("message", "Logout Successful");
-        return response;
-    }
-
-    public UserDTO login(AuthDTO credentials) throws InvalidCredentialsException {
+    public AuthenticationResponseDTO login(AuthDTO credentials) throws BadCredentialsException {
         String password = credentials.getPassword();
         String identifier = credentials.getIdentifier();
         if (password == null || identifier == null) {
-            throw new InvalidCredentialsException("Invalid Credentials");
+            throw new BadCredentialsException("Invalid Credentials");
         }
         UserPrincipal userDetails = userPrincipalService.loadUserByIdentifier(identifier);
         if (userDetails != null && passwordEncoder.matches(password, userDetails.getPasswordHash())) {
             User user = userDetails.getUser();
-            UserDTO userDTO = UserDTO.convertFromEntity(user);
+            AuthenticationResponseDTO authenticationResponseDTO = new AuthenticationResponseDTO();
             Session session = sessionService.createSession(user);
             String accessToken = tokenService.generateAccessToken(userDetails, session.getSessionId());
             String refreshToken = tokenService.generateRefreshToken(userDetails, session.getSessionId());
-            userDTO.setAccessToken(accessToken);
-            userDTO.setRefreshToken(refreshToken);
-            session.setBrowserName(credentials.getBrowserName());
-            session.setDeviceType(credentials.getDeviceType());
-            session.setOsName(credentials.getOsName());
-            session.setUserAgent(credentials.getUserAgent());
-            session.setOsVersion(credentials.getOsVersion());
-            session.setIpAddress(credentials.getIpAddress());
+            authenticationResponseDTO.setAccessToken(accessToken);
+            authenticationResponseDTO.setRefreshToken(refreshToken);
             sessionService.addSession(user.getUserId(), session);
-            userDTO.setSession(session);
-            return userDTO;
+            authenticationResponseDTO.setSession(session);
+            return authenticationResponseDTO;
         }
-        throw new com.project.bookseller.exceptions.InvalidCredentialsException(com.project.bookseller.exceptions.InvalidCredentialsException.INVALID_CREDENTIALS);
+        throw new BadCredentialsException(BadCredentialsException.INVALID_CREDENTIALS);
     }
 
-    public UserDTO getUserProfile(UserPrincipal userDetails) {
-        User user = userDetails.getUser();
-        UserDTO userDTO = new UserDTO();
-        userDTO.setEmail(user.getEmail());
-        userDTO.setFullName(user.getFullName());
-        userDTO.setUserTier(user.getUserTier());
-        userDTO.setPhone(user.getPhone());
-        userDTO.setRoleName(user.getRoleName());
-        userDTO.setGender(user.getGender());
-        userDTO.setDateOfBirth(user.getDateOfBirth());
-        userDTO.setProfilePicture(user.getProfilePicture());
-        return userDTO;
-    }
-
-    public Set<Session> getSessions(UserPrincipal userDetails) {
-        Set<Session> sessions = sessionService.getSessions(userDetails.getUserId());
-        for (Session session : sessions) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
-            String sessionDescription = String.format("Created at %s on %s, IP address %s, Browser  %s", session.getCreatedAt().format(formatter), session.getBrowserName(), session.getIpAddress(), session.getUserAgent());
-            session.setSessionDescription(sessionDescription);
-        }
-        Set<Session> sortedSessions = new TreeSet<>(sessions).descendingSet();
-        return sortedSessions;
-    }
-
-
-    public UserDTO oauth2Login(String code) {
+    public AuthenticationResponseDTO oauth2Login(String code) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
@@ -142,7 +111,7 @@ public class UserService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
         GoogleResponse response = restTemplate.postForObject(TOKEN_URL, request, GoogleResponse.class);
         HttpHeaders userInfoHeaders = new HttpHeaders();
-        UserDTO userDTO = new UserDTO();
+        AuthenticationResponseDTO authenticationResponseDTO = new AuthenticationResponseDTO();
         if (response != null) {
             userInfoHeaders.setBearerAuth(response.getAccess_token());
             System.out.println(response.getAccess_token());
@@ -167,12 +136,12 @@ public class UserService {
                     userPrincipal = new UserPrincipal(user);
                     String accessToken = tokenService.generateAccessToken(userPrincipal, session.getSessionId());
                     String refreshToken = tokenService.generateRefreshToken(userPrincipal, session.getSessionId());
-                    userDTO.setAccessToken(accessToken);
-                    userDTO.setRefreshToken(refreshToken);
-                    userDTO.setSession(session);
+                    authenticationResponseDTO.setAccessToken(accessToken);
+                    authenticationResponseDTO.setRefreshToken(refreshToken);
+                    authenticationResponseDTO.setSession(session);
                     sessionService.addSession(user.getUserId(), session);
-                    userDTO.setSession(session);
-                    return userDTO;
+                    authenticationResponseDTO.setSession(session);
+                    return authenticationResponseDTO;
                 } else if (userPrincipal.getUser().getOauth2Id() == null || userPrincipal.getUser().getOauth2Id().isEmpty()) {
                     throw new UniqueColumnViolationException(UniqueColumnViolationException.EMAIL_ALREADY_EXISTS);
                 } else {
@@ -181,16 +150,40 @@ public class UserService {
                     String accessToken = tokenService.generateAccessToken(userPrincipal, session.getSessionId());
                     String refreshToken = tokenService.generateRefreshToken(userPrincipal, session.getSessionId());
                     sessionService.addSession(user.getUserId(), session);
-                    userDTO.setSession(session);
-                    userDTO.setAccessToken(accessToken);
-                    userDTO.setRefreshToken(refreshToken);
-                    return userDTO;
+                    authenticationResponseDTO.setSession(session);
+                    authenticationResponseDTO.setAccessToken(accessToken);
+                    authenticationResponseDTO.setRefreshToken(refreshToken);
+                    return authenticationResponseDTO;
                 }
             } else {
                 throw new RuntimeException();
             }
         }
         throw new RuntimeException();
+    }
+
+    public Map<String, String> logout(UserPrincipal userDetails, Session session) {
+        sessionService.deleteSession(userDetails.getUserId(), session);
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "Logout Successful");
+        return response;
+    }
+
+    public UserDTO getUserProfile(UserPrincipal userDetails) {
+        User user = userDetails.getUser();
+        return UserDTO.convertFromEntity(user);
+    }
+
+    public Set<Session> getSessions(UserPrincipal userDetails) {
+        Set<Session> sessions = sessionService.getSessions(userDetails.getUserId());
+        for (Session session : sessions) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
+            String sessionDescription = String.format("Created at %s on %s, IP address %s, Browser  %s", session.getCreatedAt().format(formatter), session.getBrowserName(), session.getIpAddress(), session.getUserAgent());
+            session.setSessionDescription(sessionDescription);
+        }
+        Set<Session> sortedSessions = new TreeSet<>(sessions).descendingSet();
+        return sortedSessions;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -233,7 +226,7 @@ public class UserService {
         List<UserAddress> userAddresses = userAddressRepository.findUserAddressesByUserId(userDetails.getUser().getUserId());
         List<UserAddressDTO> userAddressDTOs = new ArrayList<>();
         for (UserAddress userAddress : userAddresses) {
-            UserAddressDTO userAddressDTO = UserAddressDTO.convertFromUserAddress(userAddress);
+            UserAddressDTO userAddressDTO = UserAddressDTO.convertFromEntity(userAddress);
             userAddressDTOs.add(userAddressDTO);
         }
         return userAddressDTOs;
@@ -248,8 +241,15 @@ public class UserService {
         userAddress.setPhone(userAddressDTO.getPhone());
         userAddress.setDetailedAddress(userAddressDTO.getDetailedAddress());
         userAddress.setUser(userDetails.getUser());
+        if (userAddressDTO.getId() != null) {
+            userAddress.setUserAddressId(userAddressDTO.getId());
+        }
         userAddressRepository.save(userAddress);
         userAddressDTO.setId(userAddress.getUserAddressId());
+        userAddressDTO.setFullAddress(userAddress.getDetailedAddress()
+                + ", " + userAddressDTO.getCity().getName()
+                + ", " + userAddressDTO.getState().getName()
+                + ", " + userAddressDTO.getCountry().getName());
         return userAddressDTO;
     }
 }

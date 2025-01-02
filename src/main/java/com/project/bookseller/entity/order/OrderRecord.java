@@ -18,7 +18,7 @@ public class OrderRecord {
     private Integer quantity;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_information_id")
-    private OrderInformation orderInformation;
+    private Order orderInformation;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_record_id")

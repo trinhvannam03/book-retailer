@@ -10,6 +10,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Data
@@ -28,7 +29,7 @@ public class BookDTO implements Serializable {
     private Integer bookHeight;
     private Integer bookLength;
     private Integer bookWeight;
-    private LocalDateTime publicationDate;
+    private Date publicationDate;
     private Integer pages;
     private long bookId;
     private Double price;

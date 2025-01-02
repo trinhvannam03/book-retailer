@@ -28,12 +28,8 @@ import java.util.*;
 @RequiredArgsConstructor
 @Service
 public class BookDocumentService {
-    private final ElasticsearchTemplate elasticsearchTemplate;
-    private final ElasticsearchClient elasticsearchClient;
     private final BookDocumentRepository bookDocumentRepository;
-    private final BookRepository bookRepository;
     private final ElasticsearchOperations elasticsearchOperations;
-    private final ObjectMapper objectMapper;
 
     public void indexBookDocument(BookDocument book) {
         bookDocumentRepository.save(book);
@@ -64,9 +60,17 @@ public class BookDocumentService {
         return bookDocuments;
     }
 
+    public BookDocument findDocumentById(String id) {
+        return elasticsearchOperations.get(id, BookDocument.class);
+    }
 
-    public List<BookDocument> searchByKeyword(String keyword, int page, String sortBy, String filter) throws IOException {
-
+    public List<BookDocument> searchByKeyword(String keyword,
+                                              int page,
+                                              String sortBy,
+                                              List<String> categories,
+                                              Double price_gte,
+                                              Double price_lte
+    ) throws IOException {
         co.elastic.clients.elasticsearch._types.query_dsl.Query dslQuery = co.elastic.clients.elasticsearch._types.query_dsl.Query.of(q -> q
                 .bool(
                         b -> {
@@ -87,50 +91,24 @@ public class BookDocumentService {
                                             .query(keyword.charAt(0))
                                             .fuzziness("AUTO")
                                             .boost(1.0F)));
-                            if (filter != null) {
-                                String[] fil = filter.split("_");
-                                if (fil.length == 2) {
-                                    String filterType = fil[0];
-                                    String filterValue = fil[1];
-                                    switch (filterType) {
-                                        case "category": {
-                                            //add category filter
-                                            try {
-                                                List<Long> filterContent = objectMapper
-                                                        .readValue(filterValue, new TypeReference<>() {
-                                                        });
-                                                List<FieldValue> fieldTypes = filterContent.stream().map(FieldValue::of).toList();
-                                                boolQuery = boolQuery.filter(f -> f.nested(ne -> ne.path("categories")
-                                                        .query(qu -> qu.terms(t -> t.field("categories.category_id").terms(TermsQueryField.of(tqf -> tqf.value(fieldTypes))))  // Pass fieldTypes directly
-                                                )));
+                            if (categories != null && !categories.isEmpty()) {
+                                List<FieldValue> fieldValues = categories.stream()
+                                        .map(c -> FieldValue.of(Double.valueOf(c)))
+                                        .toList();
 
-                                            } catch (JsonProcessingException e) {
-                                                throw new RuntimeException(e);
-                                            } catch (RuntimeException e) {
-                                                e.printStackTrace();
-                                            }
-                                            break;
-                                        }
-                                        case "price": {
-                                            try {
-                                                List<Double> filterContent = objectMapper
-                                                        .readValue(filterValue, new TypeReference<>() {
-                                                        });
-                                                double gte = filterContent.get(0);
-                                                double lte = filterContent.get(1);
-                                                boolQuery = boolQuery.must(must -> must.range(r -> r.number(nu -> nu.field("price").gte(gte).lte(lte))));
-                                            } catch (Exception e) {
-                                                e.printStackTrace();
-                                                throw new RuntimeException(e);
-                                            }
-                                            // Assuming filterContent is a price value (you might want to parse it if necessary)
-                                            break;
-                                        }
-                                        default: {
-                                            break;
-                                        }
-                                    }
-                                }
+                                boolQuery = boolQuery.must(mu -> mu.nested(
+                                        ne -> ne.path("categories")
+                                                .query(qu -> qu.bool(bq -> bq
+                                                        .must(m -> m.terms(t -> t
+                                                                .field("categories.category_id")
+                                                                .terms(TermsQueryField.of(tqf -> tqf.value(fieldValues)))))))));
+                            }
+
+                            if (price_gte != null && price_gte > 0.0D) {
+                                boolQuery = boolQuery.must(must -> must.range(r -> r.number(nu -> nu.field("price").gte(price_gte))));
+                            }
+                            if (price_lte != null && price_lte > 0.0D) {
+                                boolQuery = boolQuery.must(must -> must.range(r -> r.number(nu -> nu.field("price").lt(price_lte))));
                             }
                             return boolQuery;
                         }
@@ -143,7 +121,7 @@ public class BookDocumentService {
         List<BookDocument> results = returnResult(searchHits);
         Comparator<BookDocument> comparator = null;
         if (sortBy != null) {
-            System.out.println(sortBy);
+            System.out.println("SortBy:: " + sortBy);
             switch (sortBy) {
                 case "price_asc":
                     comparator = Comparator.comparing(BookDocument::getPrice);
@@ -156,6 +134,8 @@ public class BookDocumentService {
                     break;
                 case "title_desc":
                     comparator = Comparator.comparing(BookDocument::getTitle).reversed();
+                    break;
+                case "publication_date":
                     break;
                 default:
                     break;
