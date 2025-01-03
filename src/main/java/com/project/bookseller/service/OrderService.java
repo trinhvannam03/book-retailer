@@ -44,6 +44,7 @@ public class OrderService {
     private final OrderEventProducer orderEventProducer;
     private final CartRecordRepository cartRecordRepository;
 
+
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = DataMismatchException.class)
     public Map<String, Object> createOrder(UserPrincipal userDetails, OrderDTO info) throws NotEnoughStockException, UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeyException {
         List<OrderRecordDTO> items = info.getItems();
@@ -141,36 +142,31 @@ public class OrderService {
             info.setUserId(userDetails.getUserId());
             info.setOrderStatus(status);
             info.setPaymentMethod(payment);
-            orderEventProducer.emitOrderCreatedEvent(info);
+            List<OrderRecord> orderRecords = new ArrayList<>();
+            Order order = Order.convertFromDTO(info);
+            order.setOrderRecords(orderRecords);
+            order.setUserId(info.getUserId());
+            for (OrderRecordDTO orderRecordDTO : items) {
+                OrderRecord orderRecord = new OrderRecord();
+                StockRecordDTO stockRecordDTO = orderRecordDTO.getStockRecord();
+                orderRecord.setOrder(order);
+                orderRecord.setStockRecordId(stockRecordDTO.getStockRecordId());
+                orderRecord.setBookId(stockRecordDTO.getBook().getBookId());
+                orderRecord.setQuantity(orderRecordDTO.getQuantity());
+                orderRecord.setPrice(orderRecordDTO.getPrice());
+                orderRecords.add(orderRecord);
+                CartRecord cartRecord = new CartRecord();
+                cartRecord.setCartRecordId(orderRecordDTO.getCartRecordId());
+                cartRecordRepository.delete(cartRecord);
+            }
+            orderRecordRepository.saveAll(orderRecords);
+            orderRepository.save(order);
+            info.setOrderInformationId(order.getOrderInformationId());
+            result.put("order", info);
             return result;
         } else {
             throw new DataMismatchException(DataMismatchException.DATA_MISMATCH);
         }
-    }
-
-    @Transactional
-    public void performRemainingTasks(OrderDTO orderDTO) {
-        List<OrderRecordDTO> orderRecordDTOs = orderDTO.getItems();
-        List<OrderRecord> orderRecords = new ArrayList<>();
-        Order order = Order.convertFromDTO(orderDTO);
-        order.setOrderRecords(orderRecords);
-        order.setUserId(orderDTO.getUserId());
-        for (OrderRecordDTO orderRecordDTO : orderRecordDTOs) {
-            OrderRecord orderRecord = new OrderRecord();
-            StockRecordDTO stockRecordDTO = orderRecordDTO.getStockRecord();
-            orderRecord.setOrder(order);
-            orderRecord.setStockRecordId(stockRecordDTO.getStockRecordId());
-            orderRecord.setBookId(stockRecordDTO.getBook().getBookId());
-            orderRecord.setQuantity(orderRecordDTO.getQuantity());
-            orderRecord.setPrice(orderRecordDTO.getPrice());
-            orderRecords.add(orderRecord);
-            CartRecord cartRecord = new CartRecord();
-            cartRecord.setCartRecordId(orderRecordDTO.getCartRecordId());
-            cartRecordRepository.delete(cartRecord);
-        }
-        orderRepository.save(order);
-        orderRecordRepository.saveAll(orderRecords);
-
     }
 
     private double getExchangeRate() {

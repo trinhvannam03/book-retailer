@@ -4,6 +4,7 @@ import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.order.OrderDTO;
 import com.project.bookseller.exceptions.DataMismatchException;
 import com.project.bookseller.exceptions.NotEnoughStockException;
+import com.project.bookseller.kafka_producers.OrderEventProducer;
 import com.project.bookseller.service.OrderService;
 import com.project.bookseller.service.PaymentService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,8 @@ import java.util.Map;
 public class OrderController {
     private final PaymentService paymentService;
     private final OrderService orderService;
+    private final OrderEventProducer orderEventProducer;
+
 
     //create order
     @PostMapping("/")
@@ -32,6 +35,7 @@ public class OrderController {
     ResponseEntity<Map<String, Object>> createOrder(@RequestBody OrderDTO info, @AuthenticationPrincipal UserPrincipal userDetails) {
         try {
             Map<String, Object> response = orderService.createOrder(userDetails, info);
+            orderEventProducer.emitOrderCreatedEvent((OrderDTO) response.get("order"));
             return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
         } catch (DataMismatchException | NotEnoughStockException e) {
             e.printStackTrace();

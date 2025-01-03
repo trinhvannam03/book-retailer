@@ -25,7 +25,6 @@ public interface StockRecordRepository extends JpaRepository<StockRecord, Intege
     @Query("SELECT r FROM StockRecord r JOIN FETCH r.book b WHERE b.bookId IN :bookIds AND r.location.locationId = :locationId")
     List<StockRecord> findStockRecordsByLocationIdAndBookIdIn(Long locationId, List<Long> bookIds, Sort sort);
 
-
     //when placing orders
     @Query("SELECT r FROM StockRecord r JOIN FETCH r.book b WHERE r.stockRecordId IN :stockRecordIds")
     List<StockRecord> findStockRecordsByStockRecordIdIn(List<Long> stockRecordIds);

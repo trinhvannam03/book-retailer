@@ -28,13 +28,7 @@ public class KafkaListeners {
     }
 
     @KafkaListener(topics = "orders_topic", groupId = "side_task_performers")
-    public void performSideTasks(String message) {
-        try {
-            OrderDTO orderDTO = objectMapper.readValue(message, OrderDTO.class);
-            orderService.performRemainingTasks(orderDTO);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+    public void performRemainingTasks(String message) {
     }
 
     @KafkaListener(topics = "bookchain.bookchain.book", containerFactory = "kafkaListenerContainerFactory")
