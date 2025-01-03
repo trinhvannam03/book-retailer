@@ -17,13 +17,14 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OrderDTO {
     private Double estimatedShippingFee;
-    private long orderInformationId;
+    private Long orderInformationId;
     private Double estimatedDiscount;
     private Double estimatedTotal;
     private String appliedCoupon;
     private PaymentInfo payment;
     private UserDTO user;
     private CityDTO city;
+    private Long cityId;
     private String fullAddress;
     private String phone;
     private String email;
@@ -32,7 +33,7 @@ public class OrderDTO {
     private String latitude;
     private OrderType orderType;
     private PaymentMethod paymentMethod;
-
+    private Long userId;
     private Double total;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -55,18 +56,11 @@ public class OrderDTO {
         dto.setTotal(order.getTotal());
         dto.setOrderInformationId(order.getOrderInformationId());
         dto.setPaymentMethod(order.getPaymentMethod());
-        UserAddressDTO userAddressDTO = new UserAddressDTO();
-        userAddressDTO.setFullAddress(order.getFullAddress());
-        dto.setCity(CityDTO.convertFromEntity(order.getCity()));
         dto.setFullName(order.getFullName());
         dto.setLongitude(order.getLongitude());
         dto.setLatitude(order.getLatitude());
         dto.setPhone(order.getPhone());
         dto.setFullAddress(order.getFullAddress());
-
-        for (OrderRecord orderRecord : order.getOrderRecords()) {
-            dto.getItems().add(OrderRecordDTO.convertFromEntity(orderRecord));
-        }
         return dto;
     }
 }

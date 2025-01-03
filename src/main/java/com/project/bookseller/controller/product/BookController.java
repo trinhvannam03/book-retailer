@@ -35,6 +35,7 @@ public class BookController {
     @GetMapping("/{stockRecordId}")
     public ResponseEntity<StockRecordDTO> getBook(@PathVariable Long stockRecordId) {
         try {
+            System.out.println("stockRecordId: 2 " + stockRecordId);
             StockRecordDTO stockRecordDTO = bookService.findCompleteBook(stockRecordId);
             return new ResponseEntity<>(stockRecordDTO, HttpStatusCode.valueOf(200));
         } catch (ResourceNotFoundException e) {

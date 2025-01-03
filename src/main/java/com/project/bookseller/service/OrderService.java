@@ -4,7 +4,6 @@ import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.StockRecordDTO;
 import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.dto.address.CityDTO;
-import com.project.bookseller.dto.address.UserAddressDTO;
 import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.dto.order.OrderDTO;
 import com.project.bookseller.dto.order.OrderRecordDTO;
@@ -20,7 +19,6 @@ import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.kafka_producers.OrderEventProducer;
 import com.project.bookseller.repository.*;
 import jakarta.persistence.OptimisticLockException;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -40,19 +38,14 @@ import static java.util.stream.Collectors.toMap;
 @RequiredArgsConstructor
 public class OrderService {
     private final OrderRepository orderRepository;
-    private final UserAddressRepository userAddressRepository;
     private final PaymentService paymentService;
     private final OrderRecordRepository orderRecordRepository;
     private final StockRecordRepository stockRecordRepository;
     private final OrderEventProducer orderEventProducer;
+    private final CartRecordRepository cartRecordRepository;
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = DataMismatchException.class)
-    public Map<String, Object> createOrder(UserPrincipal userDetails,
-                                           OrderDTO info)
-            throws NotEnoughStockException,
-            UnsupportedEncodingException,
-            NoSuchAlgorithmException,
-            InvalidKeyException {
+    public Map<String, Object> createOrder(UserPrincipal userDetails, OrderDTO info) throws NotEnoughStockException, UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeyException {
         List<OrderRecordDTO> items = info.getItems();
         CityDTO cityDTO = info.getCity();
         City city = new City();
@@ -60,12 +53,13 @@ public class OrderService {
         city.setCityName(cityDTO.getName());
         String longitude = info.getLongitude();
         String latitude = info.getLatitude();
-        PaymentInfo paymentMethod = info.getPayment();
-        int paymentMethodId = paymentMethod.getPaymentMethodId();
+        UserDTO userDTO = new UserDTO();
+        userDTO.setUserId(userDetails.getUserId());
+        PaymentInfo paymentInfo = info.getPayment();
+        int paymentMethodId = paymentInfo.getPaymentMethodId();
         boolean validateDiscount = false;
         boolean validateShippingFee = false;
         boolean validatePaymentMethod = false;
-        boolean validateItems = false;
         PaymentMethod payment = PaymentMethod.COD;
         OrderStatus status = OrderStatus.PROCESSING;
         double total = 0;
@@ -80,11 +74,11 @@ public class OrderService {
         if (Arrays.asList(1000, 1001).contains(paymentMethodId)) {
             if (paymentMethodId == 1000) {
                 validatePaymentMethod = true;
-            } else if (Arrays.asList(1, 2, 3).contains(paymentMethod.getSubMethod())) {
+            } else if (Arrays.asList(1, 2, 3).contains(paymentInfo.getSubMethod())) {
                 validatePaymentMethod = true;
                 payment = PaymentMethod.PREPAID;
                 status = OrderStatus.PENDING;
-                switch (paymentMethod.getSubMethod()) {
+                switch (paymentInfo.getSubMethod()) {
                     case 1 -> vnp_BankCode = "VNPAYQR";
                     case 3 -> vnp_BankCode = "INTCARD";
                     default -> vnp_BankCode = "VNBANK";
@@ -99,14 +93,7 @@ public class OrderService {
 //Validate items
         List<Long> stockRecordIds = items.stream().map(i -> i.getStockRecord().getStockRecordId()).toList();
         List<StockRecord> stockRecords = stockRecordRepository.findStockRecordsByStockRecordIdIn(stockRecordIds);
-        System.out.println("146");
-        Map<Long, StockRecord> recordMap = stockRecords.stream()
-                .collect(Collectors.toMap(StockRecord::getStockRecordId, stockRecord -> stockRecord));
-        System.out.println(recordMap.keySet());
-        System.out.println("Payment Method Valid: " + validatePaymentMethod);
-        System.out.println("Items Valid: " + validateItems);
-        System.out.println("Shipping Fee Valid: " + validateShippingFee);
-        System.out.println("Discount Valid: " + validateDiscount);
+        Map<Long, StockRecord> recordMap = stockRecords.stream().collect(Collectors.toMap(StockRecord::getStockRecordId, stockRecord -> stockRecord));
         if (validatePaymentMethod && validateShippingFee && validateDiscount) {
             for (OrderRecordDTO orderRecordDTO : items) {
                 int requestQuantity = orderRecordDTO.getQuantity();
@@ -122,6 +109,7 @@ public class OrderService {
                     try {
                         stockRecord.setQuantity(stockRecord.getQuantity() - requestQuantity);
                         stockRecordRepository.saveAndFlush(stockRecord);
+                        orderRecordDTO.getStockRecord().setVersion(stockRecord.getVersion());
                         retry = false;
                     } catch (OptimisticLockException e) {
                         e.printStackTrace();
@@ -137,11 +125,11 @@ public class OrderService {
                 }
                 total += requestPrice * requestQuantity;
             }
+            //after updating stock levels, checking the sum (small deviation acceptable).
             if (!areDoublesEqual(info.getEstimatedTotal(), total)) {
                 throw new DataMismatchException(DataMismatchException.DATA_MISMATCH);
             }
             Map<String, Object> result = new HashMap<>();
-            info.setTotal(total);
             if (payment == PaymentMethod.PREPAID) {
                 double exchangeRate = getExchangeRate();
                 String vnp_Amount = String.valueOf((int) (total * exchangeRate));
@@ -149,12 +137,10 @@ public class OrderService {
                 result.put("redirect", redirect);
             }
             info.setEmail(userDetails.getEmail());
-            UserDTO userDTO = new UserDTO();
-            userDTO.setUserId(userDetails.getUserId());
-            info.setUser(userDTO);
+            info.setTotal(total);
+            info.setUserId(userDetails.getUserId());
             info.setOrderStatus(status);
             info.setPaymentMethod(payment);
-            result.put("message", "Order created successfully");
             orderEventProducer.emitOrderCreatedEvent(info);
             return result;
         } else {
@@ -162,6 +148,30 @@ public class OrderService {
         }
     }
 
+    @Transactional
+    public void performRemainingTasks(OrderDTO orderDTO) {
+        List<OrderRecordDTO> orderRecordDTOs = orderDTO.getItems();
+        List<OrderRecord> orderRecords = new ArrayList<>();
+        Order order = Order.convertFromDTO(orderDTO);
+        order.setOrderRecords(orderRecords);
+        order.setUserId(orderDTO.getUserId());
+        for (OrderRecordDTO orderRecordDTO : orderRecordDTOs) {
+            OrderRecord orderRecord = new OrderRecord();
+            StockRecordDTO stockRecordDTO = orderRecordDTO.getStockRecord();
+            orderRecord.setOrder(order);
+            orderRecord.setStockRecordId(stockRecordDTO.getStockRecordId());
+            orderRecord.setBookId(stockRecordDTO.getBook().getBookId());
+            orderRecord.setQuantity(orderRecordDTO.getQuantity());
+            orderRecord.setPrice(orderRecordDTO.getPrice());
+            orderRecords.add(orderRecord);
+            CartRecord cartRecord = new CartRecord();
+            cartRecord.setCartRecordId(orderRecordDTO.getCartRecordId());
+            cartRecordRepository.delete(cartRecord);
+        }
+        orderRepository.save(order);
+        orderRecordRepository.saveAll(orderRecords);
+
+    }
 
     private double getExchangeRate() {
         return 26011;
@@ -215,7 +225,19 @@ public class OrderService {
 
     public List<OrderDTO> getOrders(UserPrincipal userDetails) {
         List<Order> orders = orderRepository.findOrdersByUserId(userDetails.getUserId());
-        return orders.stream().map(OrderDTO::convertFromEntity).toList();
+        return orders.stream().map(o -> {
+            OrderDTO orderDTO = OrderDTO.convertFromEntity(o);
+            List<OrderRecord> orderRecords = o.getOrderRecords();
+            for (OrderRecord orderRecord : orderRecords) {
+                OrderRecordDTO orderRecordDTO = new OrderRecordDTO();
+                BookDTO book = BookDTO.convertFromEntity(orderRecord.getBook());
+                orderRecordDTO.setBook(book);
+                orderRecordDTO.setQuantity(orderRecord.getQuantity());
+                orderRecordDTO.setPrice(orderRecord.getPrice());
+                orderDTO.getItems().add(orderRecordDTO);
+            }
+            return orderDTO;
+        }).toList();
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -255,8 +277,6 @@ public class OrderService {
             if (Objects.equals(order.getUserId(), userDetails.getUserId())) {
                 OrderDTO orderInformationDTO = OrderDTO.convertFromEntity(order);
                 for (OrderRecord orderRecord : order.getOrderRecords()) {
-                    OrderRecordDTO orderRecordDTO = OrderRecordDTO.convertFromEntity(orderRecord);
-                    orderInformationDTO.getItems().add(orderRecordDTO);
                 }
                 return orderInformationDTO;
             }

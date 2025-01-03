@@ -1,5 +1,6 @@
 package com.project.bookseller.entity.user.address;
 
+import com.project.bookseller.dto.address.CityDTO;
 import com.project.bookseller.entity.location.Location;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -19,4 +20,6 @@ public class City {
     private State state = new State();
     @OneToMany(mappedBy = "city")
     private List<Location> stores = new ArrayList<>();
+
+
 }

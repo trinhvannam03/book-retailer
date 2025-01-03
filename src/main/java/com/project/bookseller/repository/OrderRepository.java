@@ -12,9 +12,8 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
     @Query("SELECT o FROM Order o JOIN FETCH o.orderRecords r " +
-            "JOIN FETCH r.stockRecord s " +
-            "JOIN FETCH s.book b " +
-            "WHERE o.user.userId = :userId ORDER BY o.orderInformationId DESC")
+            "JOIN FETCH r.book b " +
+            "WHERE o.userId = :userId ORDER BY o.orderInformationId DESC")
     List<Order> findOrdersByUserId(Long userId);
 
     @Query("SELECT o FROM Order o " +

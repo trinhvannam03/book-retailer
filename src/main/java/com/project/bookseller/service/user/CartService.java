@@ -7,7 +7,6 @@ import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.dto.order.OrderRecordDTO;
 import com.project.bookseller.entity.book.Book;
 import com.project.bookseller.entity.location.StockRecord;
-import com.project.bookseller.entity.order.OrderRecord;
 import com.project.bookseller.entity.order.OrderType;
 import com.project.bookseller.entity.user.CartRecord;
 import com.project.bookseller.exceptions.DataMismatchException;
@@ -15,7 +14,6 @@ import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.repository.CartRecordRepository;
 import com.project.bookseller.repository.StockRecordRepository;
-import com.project.bookseller.repository.book.BookRepository;
 import com.project.bookseller.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -39,27 +37,33 @@ public class CartService {
             StockRecord stockRecord = optional.get();
             int stock = stockRecord.getQuantity();
             int quantity = cartRecordDTO.getQuantity();
+            BookDTO bookDTO = BookDTO.convertFromEntity(stockRecord.getBook());
             CartRecord cartRecord = new CartRecord();
+
             try {
                 if (stock >= quantity) {
                     cartRecord.setQuantity(quantity);
-                    cartRecord.setUser(userDetails.getUser());
-                    cartRecord.setStockRecord(stockRecord);
+                    cartRecord.setUserId(userDetails.getUserId());
+                    cartRecord.setStockRecordId(stockRecordDTO.getStockRecordId());
                     recordRepository.save(cartRecord);
-                    CartRecordDTO response = CartRecordDTO.convertFromEntity(cartRecord);
-                    response.getStockRecord().setBook(BookDTO.convertFromEntity(stockRecord.getBook()));
-                    return response;
+                    cartRecordDTO.setCartRecordId(cartRecord.getCartRecordId());
+                    return cartRecordDTO;
                 } else {
                     throw new NotEnoughStockException(NotEnoughStockException.NOT_ENOUGH_STOCK);
                 }
             } catch (DataIntegrityViolationException e) {
+                e.printStackTrace();
                 List<CartRecord> cartRecords = recordRepository.findCartRecordByUserIdAndStockRecordId(userDetails.getUserId(), stockRecordDTO.getStockRecordId());
+                System.out.println("stockRecordDTO: " + stockRecordDTO.getStockRecordId());
                 assert cartRecords.size() == 1;
                 cartRecord = cartRecords.get(0);
                 if (stock >= cartRecord.getQuantity() + quantity) {
-                    cartRecord.setQuantity(cartRecord.getQuantity() + quantity);
+                    int newQuantity = cartRecordDTO.getQuantity() + cartRecord.getQuantity();
+                    cartRecord.setQuantity(newQuantity);
                     recordRepository.saveAndFlush(cartRecord);
-                    return CartRecordDTO.convertFromEntity(cartRecord);
+                    cartRecordDTO.setCartRecordId(cartRecord.getCartRecordId());
+                    cartRecordDTO.setQuantity(newQuantity);
+                    return cartRecordDTO;
                 } else {
                     throw new NotEnoughStockException(NotEnoughStockException.NOT_ENOUGH_STOCK);
                 }
@@ -123,7 +127,7 @@ public class CartService {
     public List<OrderRecordDTO> preCheck(UserPrincipal userDetails,
                                          List<CartRecordDTO> cartRecordDTOs,
                                          OrderType type) throws NotEnoughStockException {
-        List<Long> cartRecordIds = cartRecordDTOs.stream().map(CartRecordDTO::getId).toList();
+        List<Long> cartRecordIds = cartRecordDTOs.stream().map(CartRecordDTO::getCartRecordId).toList();
         List<CartRecord> cartRecords = cartRecordRepository.findCartRecordsWithStock(userDetails.getUserId(), cartRecordIds);
         //some items in the data have been deleted. throw an error
         if (cartRecords.size() != cartRecordDTOs.size() && type.equals(OrderType.PICKUP)) {
@@ -136,7 +140,7 @@ public class CartService {
             recordMap.put(cartRecord.getCartRecordId(), cartRecord);
         }
         for (CartRecordDTO cartRecordDTO : cartRecordDTOs) {
-            CartRecord cartRecord = recordMap.get(cartRecordDTO.getId());
+            CartRecord cartRecord = recordMap.get(cartRecordDTO.getCartRecordId());
             if (cartRecord == null) {
                 throw new DataMismatchException(DataMismatchException.DATA_MISMATCH);
             }
@@ -153,7 +157,7 @@ public class CartService {
                 stockRecordDTO.setBook(BookDTO.convertFromEntity(book));
                 orderRecordDTO.setStockRecord(stockRecordDTO);
                 orderRecordDTO.setPrice(price);
-                orderRecordDTO.setCartRecordId(cartRecordDTO.getId());
+                orderRecordDTO.setCartRecordId(cartRecordDTO.getCartRecordId());
                 response.add(orderRecordDTO);
             } else {
                 throw new NotEnoughStockException(NotEnoughStockException.NOT_ENOUGH_STOCK);

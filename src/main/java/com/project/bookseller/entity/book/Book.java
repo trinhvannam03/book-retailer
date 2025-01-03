@@ -1,5 +1,6 @@
 package com.project.bookseller.entity.book;
 
+import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.entity.user.CartRecord;
 import com.project.bookseller.entity.order.OrderRecord;
 import com.project.bookseller.entity.location.StockRecord;
@@ -55,8 +56,7 @@ public class Book implements com.project.bookseller.interfaces.Book {
     @OneToMany(mappedBy = "book", fetch = FetchType.LAZY)
     private List<StockRecord> stockRecords = new ArrayList<>();
 
-    @Transient
-    private int stock;
-
+    @OneToMany(mappedBy = "book", fetch = FetchType.LAZY)
+    private List<OrderRecord> orderRecords = new ArrayList<>();
 
 }

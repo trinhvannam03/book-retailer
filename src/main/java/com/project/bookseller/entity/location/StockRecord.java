@@ -1,5 +1,6 @@
 package com.project.bookseller.entity.location;
 
+import com.project.bookseller.dto.StockRecordDTO;
 import com.project.bookseller.entity.book.Book;
 import com.project.bookseller.entity.order.OrderRecord;
 import com.project.bookseller.entity.user.CartRecord;
@@ -18,14 +19,17 @@ public class StockRecord {
     private Long version;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long stockRecordId;
+    private Long stockRecordId;
     private int quantity;
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "location_id")
+    @JoinColumn(name = "location_id", insertable = false, updatable = false)
     private Location location;
+    @Column(name = "location_id")
+    private Long locationId;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "book_id")
     private Book book;
+
 
     @OneToMany(mappedBy = "stockRecord")
     private List<OrderRecord> orderRecords = new ArrayList<>();
@@ -45,6 +49,5 @@ public class StockRecord {
     public int hashCode() {
         return Objects.hashCode(getStockRecordId());
     }
-
 
 }

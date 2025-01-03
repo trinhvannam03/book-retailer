@@ -31,6 +31,7 @@ public class BookService {
 
     public StockRecordDTO findCompleteBook(Long stockRecordId) throws ResourceNotFoundException {
         Optional<StockRecord> optional = stockRecordRepository.findStockRecordByStockRecordId(stockRecordId);
+        System.out.println("stockRecordId: " + stockRecordId);
         if (optional.isPresent()) {
             StockRecord stockRecord = optional.get();
             Book book = stockRecord.getBook();

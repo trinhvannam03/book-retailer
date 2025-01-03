@@ -17,10 +17,15 @@ public class CartRecord {
     private int quantity;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
     private User user;
+    @Column(name = "user_id")
+    private long userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stock_record_id")
+    @JoinColumn(name = "stock_record_id", insertable = false, updatable = false)
     private StockRecord stockRecord;
+
+    @Column(name = "stock_record_id")
+    private long stockRecordId;
 }

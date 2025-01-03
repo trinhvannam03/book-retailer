@@ -12,11 +12,13 @@ public class StockRecordDTO {
     private int quantity;
     private LocationDTO location;
     private BookDTO book;
+    private Long version;
 
     public static StockRecordDTO convertFromEntity(StockRecord stockRecord) {
         StockRecordDTO stockRecordDTO = new StockRecordDTO();
         stockRecordDTO.setStockRecordId(stockRecord.getStockRecordId());
         stockRecordDTO.setQuantity(stockRecord.getQuantity());
+        stockRecordDTO.setVersion(stockRecord.getVersion());
         return stockRecordDTO;
     }
 }

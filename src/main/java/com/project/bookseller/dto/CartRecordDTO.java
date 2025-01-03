@@ -7,13 +7,13 @@ import lombok.Data;
 
 @Data
 public class CartRecordDTO {
-    private long id;
+    private Long cartRecordId;
     private int quantity;
     private StockRecordDTO stockRecord;
 
     public static CartRecordDTO convertFromEntity(CartRecord cartRecord) {
         CartRecordDTO cartRecordDTO = new CartRecordDTO();
-        cartRecordDTO.setId(cartRecord.getCartRecordId());
+        cartRecordDTO.setCartRecordId(cartRecord.getCartRecordId());
         cartRecordDTO.setQuantity(cartRecord.getQuantity());
         cartRecordDTO.setStockRecord(StockRecordDTO.convertFromEntity(cartRecord.getStockRecord()));
         return cartRecordDTO;

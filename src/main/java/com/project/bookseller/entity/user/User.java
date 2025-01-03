@@ -1,5 +1,6 @@
 package com.project.bookseller.entity.user;
 
+import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.entity.order.Order;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -56,4 +57,5 @@ public class User {
         this.setRoleName(UserRole.USER);
         this.setAccountStatus(AccountStatus.ACTIVE);
     }
+
 }

@@ -14,13 +14,8 @@ public class OrderRecordDTO {
     private Double price;
     private Integer quantity;
     private StockRecordDTO stockRecord;
+    private Long stockRecordId;
     private Long cartRecordId;
-
-    public static OrderRecordDTO convertFromEntity(OrderRecord orderRecord) {
-        OrderRecordDTO dto = new OrderRecordDTO();
-        dto.setQuantity(orderRecord.getQuantity());
-        dto.setPrice(orderRecord.getPrice());
-        dto.setOrderRecordId(orderRecord.getOrderRecordId());
-        return dto;
-    }
+    private BookDTO book;
+    private long bookId;
 }

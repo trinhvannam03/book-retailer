@@ -60,7 +60,7 @@ public class CartController {
     //update quantity in cart
     @PutMapping("/update")
     ResponseEntity<CartRecordDTO> updateCart(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody CartRecordDTO cartRecordDTO) {
-        Long cartRecordId = cartRecordDTO.getId();
+        Long cartRecordId = cartRecordDTO.getCartRecordId();
         Integer quantity = cartRecordDTO.getQuantity();
         try {
             CartRecordDTO cartRecord = cartService.updateCart(userDetails, cartRecordId, quantity);
