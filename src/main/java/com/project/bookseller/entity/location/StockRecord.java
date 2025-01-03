@@ -2,6 +2,7 @@ package com.project.bookseller.entity.location;
 
 import com.project.bookseller.entity.book.Book;
 import com.project.bookseller.entity.order.OrderRecord;
+import com.project.bookseller.entity.user.CartRecord;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import lombok.Data;
@@ -13,11 +14,11 @@ import java.util.Objects;
 @Entity
 @Data
 public class StockRecord {
+    @Version
+    private Long version;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long stockRecordId;
-
-    @Min(0)
     private int quantity;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id")
@@ -28,8 +29,9 @@ public class StockRecord {
 
     @OneToMany(mappedBy = "stockRecord")
     private List<OrderRecord> orderRecords = new ArrayList<>();
-    @Version
-    private Long version;
+
+    @OneToMany(mappedBy = "stockRecord", fetch = FetchType.LAZY)
+    private List<CartRecord> cartRecords = new ArrayList<>();
 
     @Override
     public boolean equals(Object o) {

@@ -1,9 +1,8 @@
 package com.project.bookseller.dto;
 
 import com.project.bookseller.dto.address.CityDTO;
+import com.project.bookseller.dto.address.StateDTO;
 import com.project.bookseller.entity.location.Location;
-import com.project.bookseller.entity.user.address.Coordinates;
-import jakarta.persistence.Embedded;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -12,19 +11,20 @@ import java.time.LocalDateTime;
 public class LocationDTO {
     private long locationId;
     private String locationName;
-    @Embedded
-    private Coordinates coordinates;
+    private String longitude;
+    private String latitude;
     private LocalDateTime openingTime;
     private LocalDateTime closingTime;
+    private String fullAddress;
     private String detailedAddress;
     private CityDTO city;
+    private StateDTO state;
 
-    public static LocationDTO convertFromStore(Location location) {
+    public static LocationDTO convertFromEntity(Location location) {
         LocationDTO locationDTO = new LocationDTO();
-        locationDTO.setLocationId(location.getLocation_id());
+        locationDTO.setLocationId(location.getLocationId());
         locationDTO.setLocationName(location.getLocationName());
-        locationDTO.setCoordinates(location.getCoordinates());
-        locationDTO.setDetailedAddress(location.getDetailedAddress());
+        locationDTO.setCity(CityDTO.convertFromEntity(location.getCity()));
         return locationDTO;
     }
 }

@@ -34,6 +34,7 @@ public class OrderController {
             Map<String, Object> response = orderService.createOrder(userDetails, info);
             return new ResponseEntity<>(response, HttpStatusCode.valueOf(200));
         } catch (DataMismatchException | NotEnoughStockException e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         } catch (UnsupportedEncodingException | NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException(e);
@@ -46,7 +47,6 @@ public class OrderController {
         OrderDTO orderInformationDTO = orderService.cancelOrder(userPrincipal, id);
         return ResponseEntity.ok(orderInformationDTO);
     }
-
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/")

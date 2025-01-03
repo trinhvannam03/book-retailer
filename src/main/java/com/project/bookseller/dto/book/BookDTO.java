@@ -1,14 +1,13 @@
 package com.project.bookseller.dto.book;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.project.bookseller.dto.StockRecordDTO;
 import com.project.bookseller.entity.book.Book;
+import com.project.bookseller.enums.BookLanguage;
 import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -18,8 +17,6 @@ import java.util.List;
 public class BookDTO implements Serializable {
     @Serial
     private static final long serialVersionUID = 4159557539810053990L;
-
-    private long id;
     private String title;
     private String bookDesc;
     private String coverType;
@@ -34,15 +31,13 @@ public class BookDTO implements Serializable {
     private long bookId;
     private Double price;
     private String publisher;
-    private String bookLanguage;
-    private Integer stock;
+    private BookLanguage bookLanguage;
     private List<AuthorDTO> authors = new ArrayList<>();
     private List<CategoryDTO> categories = new ArrayList<>();
-    private List<StockRecordDTO> stockRecords = new ArrayList<>();
 
-    public static BookDTO convertFromBook(Book book) {
+    public static BookDTO convertFromEntity(Book book) {
         BookDTO bookDTO = new BookDTO();
-        bookDTO.setId(book.getBookId());
+        bookDTO.setBookId(book.getBookId());
         bookDTO.setTitle(book.getTitle());
         bookDTO.setBookDesc(book.getBookDesc());
         bookDTO.setIsbn(book.getIsbn());
@@ -55,6 +50,7 @@ public class BookDTO implements Serializable {
         bookDTO.setPrice(book.getPrice());
         bookDTO.setPublisher(book.getPublisher());
         bookDTO.setCoverType(book.getCoverType());
+        bookDTO.setBookLanguage(book.getBookLanguage());
         return bookDTO;
     }
 }

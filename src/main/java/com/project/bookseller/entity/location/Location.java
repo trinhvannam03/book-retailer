@@ -11,7 +11,7 @@ import lombok.Data;
 public class Location {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long location_id;
+    private long locationId;
     private String locationName;
     private String detailedAddress;
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)

@@ -18,11 +18,13 @@ public class Order {
     private long orderInformationId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "city_id")
+    @JoinColumn(name = "city_id", nullable = true)
     private City city;
     private String fullAddress;
     private String phone;
     private String fullName;
+    private String longitude;
+    private String latitude;
     private LocalDateTime createdAt;
     private LocalDateTime cancelledAt;
     private LocalDateTime completedAt;

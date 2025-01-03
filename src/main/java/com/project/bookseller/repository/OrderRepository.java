@@ -11,10 +11,17 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
-    @Query("SELECT o from Order o JOIN FETCH o.orderRecords r JOIN FETCH r.book JOIN FETCH o.city c JOIN FETCH c.state s  JOIN  FETCH  s.country where o.user.userId = :userId ORDER BY o.orderInformationId DESC")
+    @Query("SELECT o FROM Order o JOIN FETCH o.orderRecords r " +
+            "JOIN FETCH r.stockRecord s " +
+            "JOIN FETCH s.book b " +
+            "WHERE o.user.userId = :userId ORDER BY o.orderInformationId DESC")
     List<Order> findOrdersByUserId(Long userId);
 
-    @Query("SELECT o from Order o JOIN FETCH o.orderRecords r JOIN FETCH r.book where o.orderInformationId = :orderId AND o.user.userId = :userId")
+    @Query("SELECT o FROM Order o " +
+            "JOIN FETCH o.orderRecords r " +
+            "JOIN FETCH r.stockRecord s " +
+            "JOIN FETCH s.book " +
+            "WHERE o.orderInformationId = :orderId AND o.user.userId = :userId")
     Optional<Order> findOrderByOrderInformationId(Long userId, Long orderId);
 
     @Query("SELECT o from Order o JOIN FETCH o.orderRecords r JOIN FETCH r.stockRecord where o.orderStatus = :status")

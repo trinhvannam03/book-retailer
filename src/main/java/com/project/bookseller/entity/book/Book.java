@@ -3,6 +3,7 @@ package com.project.bookseller.entity.book;
 import com.project.bookseller.entity.user.CartRecord;
 import com.project.bookseller.entity.order.OrderRecord;
 import com.project.bookseller.entity.location.StockRecord;
+import com.project.bookseller.enums.BookLanguage;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -13,7 +14,7 @@ import java.util.List;
 
 @Entity
 @Data
-public class Book {
+public class Book implements com.project.bookseller.interfaces.Book {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long bookId;
@@ -30,6 +31,10 @@ public class Book {
     private Date publicationDate;
     private Double price;
     private String coverType;
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "ENUM('ENGLISH', 'GERMAN')")
+    private BookLanguage bookLanguage;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "book_category",
@@ -37,8 +42,7 @@ public class Book {
             inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     private List<Category> categories;
-    @OneToMany(mappedBy = "book", fetch = FetchType.LAZY)
-    private List<CartRecord> cartRecords = new ArrayList<>();
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "book_author",
@@ -54,7 +58,5 @@ public class Book {
     @Transient
     private int stock;
 
-    @OneToMany(mappedBy = "book")
-    List<OrderRecord> orderRecords = new ArrayList<>();
 
 }

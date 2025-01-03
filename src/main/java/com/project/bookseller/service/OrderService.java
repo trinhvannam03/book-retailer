@@ -1,11 +1,14 @@
 package com.project.bookseller.service;
 
 import com.project.bookseller.authentication.UserPrincipal;
+import com.project.bookseller.dto.StockRecordDTO;
+import com.project.bookseller.dto.UserDTO;
 import com.project.bookseller.dto.address.CityDTO;
 import com.project.bookseller.dto.address.UserAddressDTO;
+import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.dto.order.OrderDTO;
 import com.project.bookseller.dto.order.OrderRecordDTO;
-import com.project.bookseller.dto.order.PaymentMethodDTO;
+import com.project.bookseller.dto.order.PaymentInfo;
 import com.project.bookseller.entity.book.Book;
 import com.project.bookseller.entity.location.StockRecord;
 import com.project.bookseller.entity.order.*;
@@ -14,10 +17,12 @@ import com.project.bookseller.entity.user.address.City;
 import com.project.bookseller.exceptions.DataMismatchException;
 import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
+import com.project.bookseller.kafka_producers.OrderEventProducer;
 import com.project.bookseller.repository.*;
-import com.project.bookseller.repository.address.CityRepository;
 import jakarta.persistence.OptimisticLockException;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +32,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -35,35 +41,26 @@ import static java.util.stream.Collectors.toMap;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final UserAddressRepository userAddressRepository;
-    private final CartRecordRepository cartRecordRepository;
     private final PaymentService paymentService;
     private final OrderRecordRepository orderRecordRepository;
     private final StockRecordRepository stockRecordRepository;
-
-
-    //for demonstration purpose only
-    private double calculateShipping(UserAddressDTO address) {
-        return 0;
-    }
-
-    //for demonstration purpose only
-    private double calculateDiscount(String coupon) {
-        return 0;
-    }
+    private final OrderEventProducer orderEventProducer;
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = DataMismatchException.class)
-    public Map<String, Object> createOrder(UserPrincipal userDetails, OrderDTO info) throws NotEnoughStockException, UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeyException {
-        Map<String, Object> result = new HashMap<>();
-        UserAddressDTO userAddress = info.getAddress();
-        CityDTO cityDTO = userAddress.getCity();
+    public Map<String, Object> createOrder(UserPrincipal userDetails,
+                                           OrderDTO info)
+            throws NotEnoughStockException,
+            UnsupportedEncodingException,
+            NoSuchAlgorithmException,
+            InvalidKeyException {
+        List<OrderRecordDTO> items = info.getItems();
+        CityDTO cityDTO = info.getCity();
         City city = new City();
         city.setCityId(cityDTO.getId());
         city.setCityName(cityDTO.getName());
-        String fullAddress = userAddress.getFullAddress();
-        String phone = userAddress.getPhone();
-        String fullName = userAddress.getFullName();
-        List<OrderRecordDTO> items = info.getItems();
-        PaymentMethodDTO paymentMethod = info.getPayment();
+        String longitude = info.getLongitude();
+        String latitude = info.getLatitude();
+        PaymentInfo paymentMethod = info.getPayment();
         int paymentMethodId = paymentMethod.getPaymentMethodId();
         boolean validateDiscount = false;
         boolean validateShippingFee = false;
@@ -80,7 +77,6 @@ public class OrderService {
         }
 //Validate payment method
         String vnp_BankCode = null;
-
         if (Arrays.asList(1000, 1001).contains(paymentMethodId)) {
             if (paymentMethodId == 1000) {
                 validatePaymentMethod = true;
@@ -90,115 +86,103 @@ public class OrderService {
                 status = OrderStatus.PENDING;
                 switch (paymentMethod.getSubMethod()) {
                     case 1 -> vnp_BankCode = "VNPAYQR";
-                    case 2 -> vnp_BankCode = "VNBANK";
                     case 3 -> vnp_BankCode = "INTCARD";
+                    default -> vnp_BankCode = "VNBANK";
                 }
             }
         }
 //Validate shipping fee
         Double estimatedShipping = info.getEstimatedShippingFee();
-        Double calculatedShipping = calculateShipping(userAddress);
-        if (estimatedShipping.equals(calculatedShipping)) {
+        if (estimatedShipping == calculateShipping(longitude, latitude)) {
             validateShippingFee = true;
         }
 //Validate items
-//StockRecord Entities are stored in the persistence context.
-        List<Long> cartRecordIds = new ArrayList<>();
-        Map<Long, OrderRecordDTO> itemsMap = new HashMap<>();
-        for (OrderRecordDTO item : items) {
-            Long cartRecordId = item.getCartRecordId();
-            itemsMap.put(cartRecordId, item);
-            cartRecordIds.add(cartRecordId);
-        }
-        List<CartRecord> cartRecords = cartRecordRepository.findCartRecordsWithStock(userDetails.getUserId(), cartRecordIds);
-        //items must be in cart, checkout price must be equal or greater than price, and stock must be sufficient, but quantity in cart may vary.
-        if (cartRecords.size() == items.size()) {
-            for (CartRecord cartRecord : cartRecords) {
-                Book book = cartRecord.getBook();
-                OrderRecordDTO item = itemsMap.get(cartRecord.getCartRecordId());
+        List<Long> stockRecordIds = items.stream().map(i -> i.getStockRecord().getStockRecordId()).toList();
+        List<StockRecord> stockRecords = stockRecordRepository.findStockRecordsByStockRecordIdIn(stockRecordIds);
+        System.out.println("146");
+        Map<Long, StockRecord> recordMap = stockRecords.stream()
+                .collect(Collectors.toMap(StockRecord::getStockRecordId, stockRecord -> stockRecord));
+        System.out.println(recordMap.keySet());
+        System.out.println("Payment Method Valid: " + validatePaymentMethod);
+        System.out.println("Items Valid: " + validateItems);
+        System.out.println("Shipping Fee Valid: " + validateShippingFee);
+        System.out.println("Discount Valid: " + validateDiscount);
+        if (validatePaymentMethod && validateShippingFee && validateDiscount) {
+            for (OrderRecordDTO orderRecordDTO : items) {
+                int requestQuantity = orderRecordDTO.getQuantity();
+                double requestPrice = orderRecordDTO.getPrice();
+                StockRecord stockRecord = recordMap.get(orderRecordDTO.getStockRecord().getStockRecordId());
+                Book book = stockRecord.getBook();
                 Double price = book.getPrice();
-                Double checkOutPrice = item.getPrice();
-                int quantity = item.getQuantity();
-                List<StockRecord> stockRecords = book.getStockRecords();
-                total += ((Integer) itemsMap.get(cartRecord.getCartRecordId()).getQuantity()) * cartRecord.getBook().getPrice();
-                //online orders are shipped from one single location. The list stockRecords only contains one record.
-                StockRecord stockRecord = stockRecords.get(0);
-                int stock = stockRecord.getQuantity();
-                if (checkOutPrice.equals(price) && stock < quantity) {
-                    throw new DataMismatchException("Some items have changed!");
+                if (!areDoublesEqual(price, requestPrice)) {
+                    throw new DataMismatchException(DataMismatchException.DATA_MISMATCH);
                 }
-            }
-        } else {
-            throw new DataMismatchException("Some items have changed!");
-        }
-        String totalToFixed2 = String.format("%.2f", total);
-        String estimatedTotal = String.valueOf(info.getEstimatedTotal());
-
-        final double doubleTotal = Double.parseDouble(totalToFixed2);
-        final double doubleEstimatedTotal = Double.parseDouble(estimatedTotal);
-        if (doubleTotal == doubleEstimatedTotal) {
-            validateItems = true;
-        }
-        if (validatePaymentMethod && validateItems && validateShippingFee && validateDiscount) {
-            Order order = new Order();
-            order.setOrderType(OrderType.ONLINE);
-            order.setUser(userDetails.getUser());
-            order.setOrderStatus(status);
-            order.setPaymentMethod(payment);
-            order.setCity(city);
-            order.setFullAddress(fullAddress);
-            order.setPhone(phone);
-            order.setFullName(fullName);
-            order.setTotal(doubleEstimatedTotal);
-            order.setDiscount(calculatedDiscount);
-            orderRepository.save(order);
-            Map<Long, StockRecord> stockRecords = cartRecords.stream().collect(toMap(CartRecord::getCartRecordId, std -> std.getBook().getStockRecords().get(0)));
-            for (CartRecord cartRecord : cartRecords) {
-                StockRecord stockRecord = stockRecords.get(cartRecord.getCartRecordId());
-                final int orderedQuantity = itemsMap.get(cartRecord.getCartRecordId()).getQuantity();//per item
-                stockRecord.setQuantity(stockRecord.getQuantity() - orderedQuantity);
-                OrderRecord orderRecord = new OrderRecord();
                 boolean retry = true;
-                do {
+                while (retry) {
                     try {
+                        stockRecord.setQuantity(stockRecord.getQuantity() - requestQuantity);
                         stockRecordRepository.saveAndFlush(stockRecord);
                         retry = false;
                     } catch (OptimisticLockException e) {
                         e.printStackTrace();
                         Optional<StockRecord> stockRecordOptional = stockRecordRepository.findStockRecordByStockRecordId(stockRecord.getStockRecordId());
-                        //recheck new stockRecord entity instance;
-                        if (stockRecordOptional.isEmpty() || stockRecordOptional.get().getQuantity() < orderedQuantity) {
-                            throw new DataMismatchException("Some items have changed!");
+                        if (stockRecordOptional.isPresent()) {
+                            stockRecord = stockRecordOptional.get();
+                        } else {
+                            throw new RuntimeException();
                         }
-                        //update new instance of StockRecord;
-                        StockRecord newStockRecord = stockRecordOptional.get();
-                        newStockRecord.setQuantity(newStockRecord.getQuantity() - orderedQuantity);
-                        stockRecords.put(stockRecord.getStockRecordId(), newStockRecord);
+                    } catch (DataIntegrityViolationException e) {
+                        throw new NotEnoughStockException(NotEnoughStockException.NOT_ENOUGH_STOCK);
                     }
-                    //still true, retry the operation with new stock record
-                } while (retry);
-                //after successfully updating stock levels, save orderRecords and save the order;
-                orderRecord.setOrderInformation(order);
-                orderRecord.setQuantity(orderedQuantity);
-                orderRecord.setStockRecord(stockRecord);
-                orderRecord.setBook(stockRecord.getBook());
-                orderRecord.setPrice(stockRecord.getBook().getPrice());
-                orderRecordRepository.saveAndFlush(orderRecord);
+                }
+                total += requestPrice * requestQuantity;
             }
-            //after saving all items in order, delete all in cart;
-            cartRecordRepository.deleteAll(cartRecords);
-            //create redirect link to pay;
-            if (vnp_BankCode != null) {
-                String vnp_Amount = String.valueOf((int) (doubleTotal * 25000));
+            if (!areDoublesEqual(info.getEstimatedTotal(), total)) {
+                throw new DataMismatchException(DataMismatchException.DATA_MISMATCH);
+            }
+            Map<String, Object> result = new HashMap<>();
+            info.setTotal(total);
+            if (payment == PaymentMethod.PREPAID) {
+                double exchangeRate = getExchangeRate();
+                String vnp_Amount = String.valueOf((int) (total * exchangeRate));
                 String redirect = paymentService.createRedirectUrl(vnp_Amount, vnp_BankCode);
                 result.put("redirect", redirect);
             }
+            info.setEmail(userDetails.getEmail());
+            UserDTO userDTO = new UserDTO();
+            userDTO.setUserId(userDetails.getUserId());
+            info.setUser(userDTO);
+            info.setOrderStatus(status);
+            info.setPaymentMethod(payment);
             result.put("message", "Order created successfully");
+            orderEventProducer.emitOrderCreatedEvent(info);
             return result;
         } else {
-            throw new DataMismatchException("Some items have changed!");
+            throw new DataMismatchException(DataMismatchException.DATA_MISMATCH);
         }
     }
+
+
+    private double getExchangeRate() {
+        return 26011;
+    }
+
+    //for demonstration purpose only
+    private double calculateShipping(String longitude, String latitude) {
+        return 0;
+    }
+
+    //for demonstration purpose only
+    private double calculateDiscount(String coupon) {
+        return 0;
+    }
+
+    //allows for standard deviation
+    public static boolean areDoublesEqual(double a, double b) {
+        double scaledEpsilon = 1e-6 * Math.max(Math.abs(a), Math.abs(b));
+        return Math.abs(a - b) < scaledEpsilon;
+    }
+
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderDTO cancelOrder(UserPrincipal userDetails, Long orderInformationId) {
@@ -220,6 +204,7 @@ public class OrderService {
             }
             orderRepository.saveAndFlush(orderInformation);
             orderInformation.setOrderStatus(OrderStatus.CANCELLED);
+            orderInformation.setCancelledAt(LocalDateTime.now());
             return OrderDTO.convertFromEntity(orderInformation);
 
         } else {
@@ -257,6 +242,7 @@ public class OrderService {
                     } while (retry);
                 }
                 order.setOrderStatus(OrderStatus.CANCELLED);
+                order.setCancelledAt(LocalDateTime.now());
                 orderRepository.saveAndFlush(order);
             }
         }

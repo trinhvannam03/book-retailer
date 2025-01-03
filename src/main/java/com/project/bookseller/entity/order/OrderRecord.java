@@ -11,9 +11,6 @@ public class OrderRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long orderRecordId;
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "book_id")
-    private Book book;
     private Double price;
     private Integer quantity;
     @ManyToOne(fetch = FetchType.LAZY)

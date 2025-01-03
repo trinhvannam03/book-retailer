@@ -1,6 +1,6 @@
 package com.project.bookseller.entity.user;
 
-import com.project.bookseller.entity.book.Book;
+import com.project.bookseller.entity.location.StockRecord;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -19,7 +19,8 @@ public class CartRecord {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "book_id")
-    private Book book;
+    @JoinColumn(name = "stock_record_id")
+    private StockRecord stockRecord;
 }

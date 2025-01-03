@@ -1,6 +1,8 @@
 package com.project.bookseller.service;
 
 
+import com.project.bookseller.dto.LocationDTO;
+import com.project.bookseller.dto.StockRecordDTO;
 import com.project.bookseller.dto.book.AuthorDTO;
 import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.dto.book.CategoryDTO;
@@ -8,7 +10,9 @@ import com.project.bookseller.entity.book.Author;
 import com.project.bookseller.entity.book.Book;
 import com.project.bookseller.entity.book.Category;
 import com.project.bookseller.entity.location.LocationType;
+import com.project.bookseller.entity.location.StockRecord;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
+import com.project.bookseller.repository.StockRecordRepository;
 import com.project.bookseller.repository.book.BookRepository;
 import com.project.bookseller.repository.book.CategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,31 +27,29 @@ import java.util.Optional;
 public class BookService {
     private final CategoryRepository categoryRepository;
     private final BookRepository bookRepository;
+    private final StockRecordRepository stockRecordRepository;
 
-    public BookDTO findCompleteBook(String isbn) throws ResourceNotFoundException {
-        Optional<Book> optionalBook = bookRepository.findBookByIsbnWithStockRecordsAndLocationType(isbn, LocationType.ONLINE_STORE);
-        if (optionalBook.isPresent()) {
-            Book book = optionalBook.get();
-            BookDTO bookDTO = BookDTO.convertFromBook(optionalBook.get());
+    public StockRecordDTO findCompleteBook(Long stockRecordId) throws ResourceNotFoundException {
+        Optional<StockRecord> optional = stockRecordRepository.findStockRecordByStockRecordId(stockRecordId);
+        if (optional.isPresent()) {
+            StockRecord stockRecord = optional.get();
+            Book book = stockRecord.getBook();
+            StockRecordDTO stockRecordDTO = StockRecordDTO.convertFromEntity(stockRecord);
+            BookDTO bookDTO = BookDTO.convertFromEntity(book);
             List<CategoryDTO> categories = new ArrayList<>();
+            List<AuthorDTO> authors = new ArrayList<>();
             for (Category category : book.getCategories()) {
                 CategoryDTO categoryDTO = CategoryDTO.convertFromCategory(category);
                 categories.add(categoryDTO);
             }
-            bookDTO.setCategories(categories);
-            List<AuthorDTO> authors = new ArrayList<>();
             for (Author author : book.getAuthors()) {
                 AuthorDTO authorDTO = AuthorDTO.convertFromEntity(author);
                 authors.add(authorDTO);
             }
+            bookDTO.setCategories(categories);
             bookDTO.setAuthors(authors);
-            try {
-                bookDTO.setStock(book.getStockRecords().get(0).getQuantity());
-                return bookDTO;
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new ResourceNotFoundException("Book not found!");
-            }
+            stockRecordDTO.setBook(bookDTO);
+            return stockRecordDTO;
         }
         throw new ResourceNotFoundException("Book not found!");
     }
@@ -60,5 +62,14 @@ public class BookService {
             categoriesDTO.add(categoryDTO);
         }
         return categoriesDTO;
+    }
+
+    public List<StockRecordDTO> findAvailableStores(Long bookId) {
+        List<StockRecord> stockRecords = stockRecordRepository.findStockRecordsByBookIdAndLocationType(bookId, LocationType.STORE);
+        return stockRecords.stream().map(r -> {
+            StockRecordDTO stockRecordDTO = StockRecordDTO.convertFromEntity(r);
+            stockRecordDTO.setLocation(LocationDTO.convertFromEntity(r.getLocation()));
+            return stockRecordDTO;
+        }).toList();
     }
 }

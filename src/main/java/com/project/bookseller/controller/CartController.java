@@ -2,6 +2,8 @@ package com.project.bookseller.controller;
 
 import com.project.bookseller.authentication.UserPrincipal;
 import com.project.bookseller.dto.CartRecordDTO;
+import com.project.bookseller.dto.order.OrderRecordDTO;
+import com.project.bookseller.entity.order.OrderType;
 import com.project.bookseller.exceptions.NotEnoughStockException;
 import com.project.bookseller.exceptions.ResourceNotFoundException;
 import com.project.bookseller.service.user.CartService;
@@ -13,7 +15,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -24,11 +25,10 @@ public class CartController {
     //add to cart
     @PostMapping("/")
     @PreAuthorize("isAuthenticated()")
-    ResponseEntity<List<CartRecordDTO>> addToCart(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody Map<String, Object> requestData) {
+    ResponseEntity<CartRecordDTO> addToCart(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody CartRecordDTO cartRecordDTO) {
         try {
-            cartService.addToCart(userDetails, ((Integer) requestData.get("book_id")).longValue(), (Integer) requestData.get("quantity"));
-            List<CartRecordDTO> cartRecords = cartService.getCart(userDetails);
-            return ResponseEntity.ok(cartRecords);
+            CartRecordDTO cartRecord = cartService.addToCart(userDetails, cartRecordDTO);
+            return ResponseEntity.ok(cartRecord);
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
             return new ResponseEntity<>(HttpStatusCode.valueOf(404));
@@ -70,11 +70,16 @@ public class CartController {
             return new ResponseEntity<>(HttpStatusCode.valueOf(400));
         }
     }
+
     //check and return checked items when accessing checkout page.
-    @PostMapping("/checked-items")
-    ResponseEntity<List<CartRecordDTO>> getCheckedItems(@AuthenticationPrincipal UserPrincipal userDetails, @RequestBody List<CartRecordDTO> cartRecordDTOs) {
+    @PostMapping("/pre-check")
+    ResponseEntity<List<OrderRecordDTO>> preCheck(@AuthenticationPrincipal UserPrincipal userDetails,
+                                                  @RequestBody List<CartRecordDTO> cartRecordDTOs,
+                                                  @RequestParam OrderType type
+    ) {
         try {
-            List<CartRecordDTO> cartRecords = cartService.getCheckedItems(userDetails, cartRecordDTOs);
+            List<OrderRecordDTO> cartRecords = cartService.preCheck(userDetails, cartRecordDTOs, type);
+            System.out.println(cartRecordDTOs);
             return ResponseEntity.ok(cartRecords);
         } catch (Exception e) {
             e.printStackTrace();

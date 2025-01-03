@@ -1,20 +1,22 @@
 package com.project.bookseller.service.elasticSearch;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Like;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermsQueryField;
 import co.elastic.clients.json.JsonData;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.project.bookseller.elasticSearchEntity.BookDocument;
+import com.project.bookseller.dto.StockRecordDTO;
+import com.project.bookseller.dto.book.BookDTO;
 import com.project.bookseller.elasticSearchEntity.BookDocumentRepository;
-import com.project.bookseller.repository.book.BookRepository;
+import com.project.bookseller.entity.book.BookDocument;
+import com.project.bookseller.entity.location.Location;
+import com.project.bookseller.entity.location.LocationType;
+import com.project.bookseller.entity.location.StockRecord;
+import com.project.bookseller.repository.LocationRepository;
+import com.project.bookseller.repository.StockRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
@@ -30,6 +32,8 @@ import java.util.*;
 public class BookDocumentService {
     private final BookDocumentRepository bookDocumentRepository;
     private final ElasticsearchOperations elasticsearchOperations;
+    private final StockRecordRepository stockRecordRepository;
+    private final LocationRepository locationRepository;
 
     public void indexBookDocument(BookDocument book) {
         bookDocumentRepository.save(book);
@@ -52,134 +56,96 @@ public class BookDocumentService {
         return null;
     }
 
-    public List<BookDocument> returnResult(SearchHits<BookDocument> searchHits) {
-        List<BookDocument> bookDocuments = new ArrayList<>();
-        for (SearchHit<BookDocument> searchHit : searchHits) {
-            bookDocuments.add(searchHit.getContent());
+    public List<StockRecordDTO> returnResult(Long locationId, SearchHits<BookDocument> searchHits, Sort sort) {
+        if (locationId == null) {
+            List<Location> locations = locationRepository.findLocationsByLocationType(LocationType.ONLINE_STORE);
+            assert locations.size() == 1;
+            locationId = locations.get(0).getLocationId();
         }
-        return bookDocuments;
+        System.out.println(locationId);
+        List<Long> bookDocuments = new ArrayList<>();
+        for (SearchHit<BookDocument> searchHit : searchHits) {
+            bookDocuments.add(Long.valueOf(Objects.requireNonNull(searchHit.getId())));
+        }
+        List<StockRecord> stockRecords = stockRecordRepository.findStockRecordsByLocationIdAndBookIdIn(locationId, bookDocuments, sort);
+        return stockRecords.stream().map(r -> {
+            StockRecordDTO stockRecordDTO = StockRecordDTO.convertFromEntity(r);
+            stockRecordDTO.setBook(BookDTO.convertFromEntity(r.getBook()));
+            return stockRecordDTO;
+        }).toList();
     }
 
-    public BookDocument findDocumentById(String id) {
-        return elasticsearchOperations.get(id, BookDocument.class);
-    }
 
-    public List<BookDocument> searchByKeyword(String keyword,
-                                              int page,
-                                              String sortBy,
-                                              List<String> categories,
-                                              Double price_gte,
-                                              Double price_lte
-    ) throws IOException {
-        co.elastic.clients.elasticsearch._types.query_dsl.Query dslQuery = co.elastic.clients.elasticsearch._types.query_dsl.Query.of(q -> q
-                .bool(
-                        b -> {
-                            BoolQuery.Builder boolQuery = new BoolQuery.Builder();
-                            boolQuery
-                                    .should(sh -> sh.match(m -> m.field("title").query(keyword).fuzziness("AUTO").boost(20.0F)))
-                                    .should(s -> s.match(m -> m.field("book_desc").query(keyword).fuzziness("AUTO").boost(3.0F)))
-                                    .should(s -> s.nested(n -> n.path("authors").query(qu -> qu.match(m -> m  // Apply match query inside the nested query
-                                            .field("authors.author_name")  // Match on the author_name field within the nested object
-                                            .query(keyword)  // Search for the keyword
-                                            .fuzziness("AUTO")  // Use fuzziness for auto suggestion
-                                            .boost(2.0F)))))
-                                    .should(s -> s.nested(n -> n.path("categories").query(qry -> qry.match(m -> m
-                                            .field("categories.category_name")
-                                            .query(keyword).fuzziness("AUTO")
-                                            .boost(2.0F)))))
-                                    .should(s -> s.match(m -> m.field("title")
-                                            .query(keyword.charAt(0))
-                                            .fuzziness("AUTO")
-                                            .boost(1.0F)));
-                            if (categories != null && !categories.isEmpty()) {
-                                List<FieldValue> fieldValues = categories.stream()
-                                        .map(c -> FieldValue.of(Double.valueOf(c)))
-                                        .toList();
+    public List<StockRecordDTO> searchByKeyword(Long locationId, String keyword, int page, String
+            sortBy, List<String> categories, Double price_gte, Double price_lte) throws IOException {
+        co.elastic.clients.elasticsearch._types.query_dsl.Query dslQuery = co.elastic.clients.elasticsearch._types.query_dsl.Query.of(q -> q.bool(b -> {
+            BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+            boolQuery.should(sh -> sh.match(m -> m.field("title").query(keyword).fuzziness("AUTO").boost(20.0F))).should(s -> s.match(m -> m.field("book_desc").query(keyword).fuzziness("AUTO").boost(3.0F))).should(s -> s.nested(n -> n.path("authors").query(qu -> qu.match(m -> m  // Apply match query inside the nested query
+                    .field("authors.author_name")  // Match on the author_name field within the nested object
+                    .query(keyword)  // Search for the keyword
+                    .fuzziness("AUTO")  // Use fuzziness for auto suggestion
+                    .boost(3.0F))))).should(s -> s.nested(n -> n.path("categories").query(qry -> qry.match(m -> m.field("categories.category_name").query(keyword).fuzziness("AUTO").boost(2.0F)))));
+            if (categories != null && !categories.isEmpty()) {
+                System.out.println(categories.toString());
+                List<FieldValue> fieldValues = categories.stream().map(c -> FieldValue.of(String.valueOf(c))).toList();
 
-                                boolQuery = boolQuery.must(mu -> mu.nested(
-                                        ne -> ne.path("categories")
-                                                .query(qu -> qu.bool(bq -> bq
-                                                        .must(m -> m.terms(t -> t
-                                                                .field("categories.category_id")
-                                                                .terms(TermsQueryField.of(tqf -> tqf.value(fieldValues)))))))));
-                            }
-
-                            if (price_gte != null && price_gte > 0.0D) {
-                                boolQuery = boolQuery.must(must -> must.range(r -> r.number(nu -> nu.field("price").gte(price_gte))));
-                            }
-                            if (price_lte != null && price_lte > 0.0D) {
-                                boolQuery = boolQuery.must(must -> must.range(r -> r.number(nu -> nu.field("price").lt(price_lte))));
-                            }
-                            return boolQuery;
-                        }
-                )
-        );
-        Query query = NativeQuery.builder().withQuery(dslQuery)
-                .withPageable(Pageable.ofSize(8).withPage(page))
-                .build();
+                boolQuery = boolQuery.must(mu -> mu.nested(ne -> ne.path("categories").query(qu -> qu.bool(bq -> bq.must(m -> m.terms(t -> t.field("categories.category_id").terms(TermsQueryField.of(tqf -> tqf.value(fieldValues)))))))));
+            }
+            if (price_gte != null && price_gte > 0.0D) {
+                boolQuery = boolQuery.must(must -> must.range(r -> r.number(nu -> nu.field("price").gte(price_gte))));
+            }
+            if (price_lte != null && price_lte > 0.0D) {
+                boolQuery = boolQuery.must(must -> must.range(r -> r.number(nu -> nu.field("price").lt(price_lte))));
+            }
+            return boolQuery;
+        }));
+        Query query = NativeQuery.builder().withQuery(dslQuery).withPageable(Pageable.ofSize(8).withPage(page)).build();
         SearchHits<BookDocument> searchHits = elasticsearchOperations.search(query, BookDocument.class);
-        List<BookDocument> results = returnResult(searchHits);
-        Comparator<BookDocument> comparator = null;
+
+        Sort sort = null;
         if (sortBy != null) {
             System.out.println("SortBy:: " + sortBy);
             switch (sortBy) {
                 case "price_asc":
-                    comparator = Comparator.comparing(BookDocument::getPrice);
+                    sort = Sort.by(Sort.Direction.ASC, "b.price");
                     break;
                 case "price_desc":
-                    comparator = Comparator.comparing(BookDocument::getPrice).reversed();
+                    sort = Sort.by(Sort.Direction.DESC, "b.price");
                     break;
                 case "title_asc":
-                    comparator = Comparator.comparing(BookDocument::getTitle);
+                    sort = Sort.by(Sort.Direction.ASC, "b.title");
                     break;
                 case "title_desc":
-                    comparator = Comparator.comparing(BookDocument::getTitle).reversed();
-                    break;
-                case "publication_date":
+                    sort = Sort.by(Sort.Direction.DESC, "b.title");
                     break;
                 default:
                     break;
             }
-            if (comparator != null) {
-                results.sort(comparator);
-            }
         }
-        return results;
+        return returnResult(locationId, searchHits, sort);
     }
 
-    public List<BookDocument> getSimilarBooksByAuthor(String keyword) throws IOException {
+    public List<StockRecordDTO> getSimilarBooksByAuthor(Long locationId, String keyword) throws IOException {
         List<String> fields = Arrays.asList("authors.author_name", "author.author_id");
         Like like = Like.of(l -> l.text(keyword));
         // Build the query
-        Query query = NativeQuery.builder()
-                .withQuery(q -> q.bool(b -> b
-                        .should(s -> s.nested(n -> n.path("authors").query(qu -> qu.match(m -> m  // Apply match query inside the nested query
-                                .field("authors.author_name")  // Match on the author_name field within the nested object
-                                .query(keyword)  // Search for the keyword
-                                .fuzziness("AUTO")  // Use fuzziness for auto suggestion
-                                .boost(5.0F)))))
-                        .should(s -> s.nested(n -> n.path("categories").query(qry -> qry.match(m -> m
-                                .field("categories.category_name")
-                                .query(keyword).fuzziness("AUTO")
-                                .boost(2.0F)))))))
-                .build();
+        Query query = NativeQuery.builder().withQuery(q -> q.bool(b -> b.should(s -> s.nested(n -> n.path("authors").query(qu -> qu.match(m -> m  // Apply match query inside the nested query
+                .field("authors.author_name")  // Match on the author_name field within the nested object
+                .query(keyword)  // Search for the keyword
+                .fuzziness("AUTO")  // Use fuzziness for auto suggestion
+                .boost(5.0F))))).should(s -> s.nested(n -> n.path("categories").query(qry -> qry.match(m -> m.field("categories.category_name").query(keyword).fuzziness("AUTO").boost(2.0F))))))).build();
         SearchHits<BookDocument> searchHits = elasticsearchOperations.search(query, BookDocument.class);
-        return returnResult(searchHits);
+        return returnResult(locationId, searchHits, null);
     }
 
-    public List<BookDocument> getMoreLikeThis(BookDocument document) throws IOException {
+    public List<StockRecordDTO> getMoreLikeThis(Long locationId, BookDocument document) throws IOException {
         List<String> fields = Arrays.asList("title", "book_desc");
         List<String> nestedFields = Arrays.asList("categories.category_name", "categories.category_desc");
 
         Like like = Like.of(l -> l.document(d -> d.doc(JsonData.of(document))));
-        Query query = NativeQuery.builder().withQuery(
-                qu -> qu.bool(b -> b
-                        .should(s -> s.moreLikeThis(m -> m.fields(fields).like(like)))
-                        .should(
-                                s -> s.nested(n -> n.path("categories").query(q -> q.moreLikeThis(m -> m.like(like).fields(nestedFields))))
-                        ).mustNot(mn -> mn.match(m -> m.field("title").query(document.getTitle()))))
-        ).build();
+        Query query = NativeQuery.builder().withQuery(qu -> qu.bool(b -> b.should(s -> s.moreLikeThis(m -> m.fields(fields).like(like))).should(s -> s.nested(n -> n.path("categories").query(q -> q.moreLikeThis(m -> m.like(like).fields(nestedFields))))).mustNot(mn -> mn.match(m -> m.field("title").query(document.getTitle()))))).build();
         SearchHits<BookDocument> searchHits = elasticsearchOperations.search(query, BookDocument.class);
-        return returnResult(searchHits);
+
+        return returnResult(locationId, searchHits, null);
     }
 }
